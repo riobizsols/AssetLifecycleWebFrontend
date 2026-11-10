@@ -9,8 +9,27 @@ import {
 
 const TTL_MS = 3 * 60 * 1000;
 const LIST_KEY = 'inspection-frequencies:list';
-const MAPPINGS_KEY = 'inspection-frequencies:mappings';
+const MAPPINGS_KEY = 'inspection-frequencies:insp-required-types';
 const UOM_KEY = 'inspection-frequencies:uom';
+
+const isOn = (value) =>
+  value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true';
+
+function toAssetTypeOptions(types) {
+  return (Array.isArray(types) ? types : [])
+    .filter((at) => isOn(at.int_status) && isOn(at.inspection_required))
+    .map((at) => ({
+      at_id: at.asset_type_id,
+      asset_type_id: at.asset_type_id,
+      asset_type_name: at.text,
+      asset_id: null,
+      asset_name: null,
+      org_id: at.org_id,
+      rowId: at.asset_type_id,
+      displayName: `${at.text || at.asset_type_id} (All Assets)`,
+    }))
+    .sort((a, b) => String(a.asset_type_name).localeCompare(String(b.asset_type_name)));
+}
 
 export function formatInspectionFrequencyRows(raw, allAssetsFallback, onDemandFallback, notApplicable) {
   return (raw || []).map((f) => ({
@@ -77,12 +96,9 @@ export const useInspectionFrequencyStore = create((set, get) => ({
 
   fetchMappings: async ({ revalidate = false, force = false } = {}) => {
     const fetcher = async () => {
-      const res = await API.get('/asset-type-checklist-mapping/all');
-      const data = res.data?.data || [];
-      return (Array.isArray(data) ? data : []).map((m) => ({
-        ...m,
-        rowId: m.asset_id ? `${m.at_id}_${m.asset_id}` : m.at_id,
-      }));
+      const res = await API.get('/asset-types');
+      const payload = res.data?.data || res.data || [];
+      return toAssetTypeOptions(Array.isArray(payload) ? payload : []);
     };
 
     if (revalidate && !force) {
@@ -132,12 +148,12 @@ export const useInspectionFrequencyStore = create((set, get) => ({
   },
 
   loadPageData: async (opts = {}) => {
-    const { revalidate = true, formatOpts } = opts;
+    const { revalidate = true, force = false, formatOpts } = opts;
     await Promise.all([
-      get().fetchMappings({ revalidate }),
-      get().fetchUom({ revalidate }),
+      get().fetchMappings({ revalidate, force }),
+      get().fetchUom({ revalidate, force }),
     ]);
-    return get().fetchFrequencies({ revalidate, formatOpts });
+    return get().fetchFrequencies({ revalidate, force, formatOpts });
   },
 
   prefetchInspectionFrequencies: (formatOpts) => {

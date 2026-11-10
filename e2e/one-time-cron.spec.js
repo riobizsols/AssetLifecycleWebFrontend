@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-OC-${Date.now().toString(36)}`;
+const run = `PW-OC-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const screenUrl = `${BASE}/adminsettings/configuration/one-time-cron`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
 

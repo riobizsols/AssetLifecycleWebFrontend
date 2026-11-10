@@ -1,8 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 
+/**
+ * When partitionBySecondary is on and secondaryDisplayKey is set, options with
+ * a positive secondary value (e.g. count) render first, then a divider, then
+ * options with no/zero data — same pattern as Upcoming Jobs technician select.
+ */
 const SearchableDropdown = ({
   options,
   value,
@@ -17,7 +22,9 @@ const SearchableDropdown = ({
   displayKey = "text",
   valueKey = "id",
   secondaryDisplayKey = null,
-  secondaryLoading = false
+  secondaryLoading = false,
+  partitionBySecondary = false,
+  emptySectionLabel = "No data available",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,18 +34,63 @@ const SearchableDropdown = ({
   const buttonRef = useRef(null);
   const navigate = useNavigate();
 
-  // Filter options based on search term
-  const filteredOptions = options.filter(option => {
-    const displayValue = option && option[displayKey];
-    return displayValue && displayValue.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  const filteredOptions = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return (options || []).filter((option) => {
+      if (option?.isSeparator) return false;
+      const displayValue = option && option[displayKey];
+      return displayValue && String(displayValue).toLowerCase().includes(term);
+    });
+  }, [options, displayKey, searchTerm]);
+
+  const hasSecondaryData = (option) => {
+    if (!secondaryDisplayKey || !option) return false;
+    const raw = option[secondaryDisplayKey];
+    if (raw === undefined || raw === null || raw === '') return false;
+    const n = Number(raw);
+    if (Number.isFinite(n)) return n > 0;
+    return Boolean(raw);
+  };
+
+  const { withDataOptions, withoutDataOptions, shouldPartition } = useMemo(() => {
+    const canPartition =
+      partitionBySecondary &&
+      Boolean(secondaryDisplayKey) &&
+      !secondaryLoading;
+
+    if (!canPartition) {
+      return {
+        withDataOptions: filteredOptions,
+        withoutDataOptions: [],
+        shouldPartition: false,
+      };
+    }
+
+    const withData = [];
+    const withoutData = [];
+    filteredOptions.forEach((option) => {
+      if (hasSecondaryData(option)) withData.push(option);
+      else withoutData.push(option);
+    });
+
+    return {
+      withDataOptions: withData,
+      withoutDataOptions: withoutData,
+      shouldPartition: withData.length > 0 && withoutData.length > 0,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filteredOptions,
+    partitionBySecondary,
+    secondaryDisplayKey,
+    secondaryLoading,
+  ]);
 
   const updateDropdownPosition = () => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     const viewportPadding = 12;
 
-    // Use measured height when available; fall back to estimate on first frame
     const measuredHeight = dropdownRef.current?.getBoundingClientRect().height;
     const dropdownHeight = measuredHeight && measuredHeight > 0 ? measuredHeight : 260;
 
@@ -58,7 +110,6 @@ const SearchableDropdown = ({
     });
   };
 
-  // Update dropdown position when opening + keep it correct on scroll/resize
   useEffect(() => {
     if (!isOpen) return;
 
@@ -75,12 +126,11 @@ const SearchableDropdown = ({
       window.removeEventListener('resize', handleResize);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, filteredOptions.length, searchTerm]);
+  }, [isOpen, filteredOptions.length, searchTerm, shouldPartition]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && 
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
           buttonRef.current && !buttonRef.current.contains(event.target)) {
         setIsOpen(false);
       }
@@ -90,9 +140,44 @@ const SearchableDropdown = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get display value for selected option
-  const selectedOption = options.find(option => option[valueKey] === value);
+  const selectedOption = options.find((option) => option[valueKey] === value);
   const displayValue = selectedOption ? selectedOption[displayKey] : placeholder;
+
+  const renderOption = (option) => (
+    <div
+      key={String(option[valueKey])}
+      onClick={() => {
+        onChange(option[valueKey]);
+        setIsOpen(false);
+        setSearchTerm("");
+      }}
+      className={`px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm ${
+        option[valueKey] === value ? 'bg-gray-100' : ''
+      } ${
+        partitionBySecondary && secondaryDisplayKey && !hasSecondaryData(option)
+          ? 'text-gray-500'
+          : ''
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate">{option[displayKey]}</span>
+        {secondaryDisplayKey && secondaryLoading && (
+          <span
+            className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
+            aria-label="Loading"
+          />
+        )}
+        {secondaryDisplayKey &&
+          !secondaryLoading &&
+          option[secondaryDisplayKey] !== undefined &&
+          option[secondaryDisplayKey] !== null && (
+            <span className="text-gray-500 whitespace-nowrap text-right">
+              ({option[secondaryDisplayKey]})
+            </span>
+          )}
+      </div>
+    </div>
+  );
 
   return (
     <div className={`relative ${className}`}>
@@ -125,16 +210,15 @@ const SearchableDropdown = ({
       </button>
 
       {isOpen && !disabled && createPortal(
-        <div 
+        <div
           ref={dropdownRef}
           className="fixed z-[10050] bg-white border rounded-md shadow-lg"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,
-            width: dropdownPosition.width
+            width: dropdownPosition.width,
           }}
         >
-          {/* Search input */}
           <div className="sticky top-0 p-2 border-b bg-white">
             <input
               type="text"
@@ -146,40 +230,30 @@ const SearchableDropdown = ({
             />
           </div>
 
-          {/* Options list */}
           <div className="max-h-48 overflow-y-auto">
-            {filteredOptions.map((option) => (
-              <div
-                key={option[valueKey]}
-                onClick={() => {
-                  onChange(option[valueKey]);
-                  setIsOpen(false);
-                  setSearchTerm("");
-                }}
-                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm ${option[valueKey] === value ? 'bg-gray-100' : ''
-                  }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate">{option[displayKey]}</span>
-                  {secondaryDisplayKey && secondaryLoading && (
-                    <span
-                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
-                      aria-label="Loading"
-                    />
-                  )}
-                  {secondaryDisplayKey && !secondaryLoading && option[secondaryDisplayKey] !== undefined && option[secondaryDisplayKey] !== null && (
-                    <span className="text-gray-500 whitespace-nowrap text-right">({option[secondaryDisplayKey]})</span>
-                  )}
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-500">No options</div>
+            ) : shouldPartition ? (
+              <>
+                {withDataOptions.map(renderOption)}
+                <div
+                  className="sticky top-0 z-[1] border-y border-slate-200 bg-slate-50 px-3 py-1 text-center text-[9px] font-medium tracking-wide text-slate-400"
+                  role="presentation"
+                >
+                  ── {emptySectionLabel} ──
                 </div>
-              </div>
-            ))}
+                {withoutDataOptions.map(renderOption)}
+              </>
+            ) : (
+              (partitionBySecondary && secondaryDisplayKey && !secondaryLoading
+                ? [...withDataOptions, ...withoutDataOptions]
+                : filteredOptions
+              ).map(renderOption)
+            )}
           </div>
 
-          {/* Create New option */}
           {(createNewPath || onCreateNew) && (
-            <div
-              className="sticky bottom-0 border-t bg-white"
-            >
+            <div className="sticky bottom-0 border-t bg-white">
               <button
                 type="button"
                 onClick={() => {

@@ -252,6 +252,10 @@ export default function Header() {
       title: t("navigation.maintenanceStatusReport"),
       subtitle: "",
     },
+    "/reports/upcoming-maintenance-schedule": {
+      title: t("navigation.upcomingMaintenanceScheduleReport"),
+      subtitle: "",
+    },
     "/reports/workforce": {
       title: "Engineering Team Productivity Report",
       subtitle: "",
@@ -266,6 +270,10 @@ export default function Header() {
     },
     "/adminsettings/configuration/maintenance-config": {
       title: t("columnAccessConfig.breadcrumbMaintenanceConfig"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/inspection-workflow": {
+      title: t("columnAccessConfig.breadcrumbInspectionWorkflow"),
       subtitle: "",
     },
     "/adminsettings/configuration/bulk-serial-number-print": {

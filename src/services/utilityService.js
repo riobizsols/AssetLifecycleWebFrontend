@@ -35,6 +35,8 @@ export const utilityService = {
     data(await API.post('/utilities/consumptions/preview', payload)),
   createConsumption: async (payload) =>
     data(await API.post('/utilities/consumptions', payload)),
+  deleteConsumption: async (utcvId) =>
+    data(await API.delete(`/utilities/consumptions/${encodeURIComponent(utcvId)}`)),
   getConsumptionReport: async (params = {}) =>
     data(await API.get('/utilities/report', { params })),
 };

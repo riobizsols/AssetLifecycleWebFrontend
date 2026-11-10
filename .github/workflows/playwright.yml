@@ -41,7 +41,7 @@ on:
         type: string
         default: ''
   push:
-    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
+    branches: [production, Niranjan-Prod, sanjana-prod]
     paths:
       - 'e2e/**'
       - 'playwright.config.js'
@@ -50,7 +50,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
   pull_request:
-    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
+    branches: [production, Niranjan-Prod, sanjana-prod]
     paths:
       - 'e2e/**'
       - 'playwright.config.js'
@@ -63,6 +63,12 @@ concurrency:
 
 jobs:
   e2e:
+    # Manual runs still list every branch. Skip any branch outside this set.
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      github.ref_name == 'production' ||
+      github.ref_name == 'Niranjan-Prod' ||
+      github.ref_name == 'sanjana-prod'
     name: ${{ github.event.inputs.spec && format('e2e {0}', github.event.inputs.spec) || 'e2e' }}
     timeout-minutes: 360
     # Empty E2E_RUNNER keeps the current GitHub-hosted machine. alm-e2e is the DB server.
@@ -77,11 +83,11 @@ jobs:
         run: |
           REF="${{ github.head_ref || github.ref_name }}"
           case "$REF" in
-            Niranjan-Prod|sanjana-prod|Harshini-Prod|production)
+            Niranjan-Prod|sanjana-prod|production)
               BACKEND_REF="$REF"
               ;;
             *)
-              BACKEND_REF="Niranjan-Prod"
+              BACKEND_REF="production"
               ;;
           esac
           echo "ref=$BACKEND_REF" >> "$GITHUB_OUTPUT"

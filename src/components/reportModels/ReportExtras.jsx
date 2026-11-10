@@ -267,6 +267,9 @@ export function ReportPreviewModal({
     { id: 'data', label: 'Data' },
   ];
 
+  const safeSummaryItems = Array.isArray(summaryItems) ? summaryItems : [];
+  const safeFilterSummary = Array.isArray(filterSummary) ? filterSummary : [];
+
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center p-0 sm:p-6">
       <button
@@ -275,8 +278,8 @@ export function ReportPreviewModal({
         aria-label="Close preview"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl">
-        <div className="bg-[#0E2F4B] px-5 py-4 text-white border-b-4 border-[#FFC107]">
+      <div className="relative z-10 flex h-[85vh] max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl">
+        <div className="shrink-0 bg-[#0E2F4B] px-5 py-4 text-white border-b-4 border-[#FFC107]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#FFC107]">
@@ -299,7 +302,7 @@ export function ReportPreviewModal({
           </div>
         </div>
 
-        <div className="flex border-b border-slate-200 bg-white px-2">
+        <div className="flex shrink-0 border-b border-slate-200 bg-white px-2">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -316,21 +319,21 @@ export function ReportPreviewModal({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-white">
           {tab === 'summary' && (
             <div className="p-5">
-              {summaryItems?.length ? (
+              {safeSummaryItems.length ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {summaryItems.map((item) => (
+                  {safeSummaryItems.map((item, idx) => (
                     <div
-                      key={item.label}
+                      key={`${item.label}-${idx}`}
                       className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3"
                     >
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         {item.label}
                       </p>
                       <p className="mt-1.5 text-lg font-semibold tabular-nums text-slate-900">
-                        {item.value ?? '—'}
+                        {item.value == null || item.value === '' ? '—' : String(item.value)}
                       </p>
                       {item.sub ? (
                         <p className="mt-1 text-xs text-slate-500">{item.sub}</p>
@@ -348,7 +351,7 @@ export function ReportPreviewModal({
 
           {tab === 'filters' && (
             <div className="p-5">
-              {filterSummary?.length ? (
+              {safeFilterSummary.length ? (
                 <div className="overflow-hidden rounded-xl border border-slate-200">
                   <table className="min-w-full text-sm">
                     <thead className="bg-[#0E2F4B] text-white">
@@ -362,12 +365,14 @@ export function ReportPreviewModal({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                      {filterSummary.map((item) => (
-                        <tr key={`${item.label}-${item.value}`} className="hover:bg-slate-50/90">
+                      {safeFilterSummary.map((item, idx) => (
+                        <tr key={`${item.label}-${idx}`} className="hover:bg-slate-50/90">
                           <td className="whitespace-nowrap px-4 py-2.5 font-medium text-slate-600">
                             {item.label}
                           </td>
-                          <td className="px-4 py-2.5 text-slate-800">{item.value}</td>
+                          <td className="px-4 py-2.5 text-slate-800">
+                            {item.value == null || item.value === '' ? '—' : String(item.value)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -419,7 +424,7 @@ export function ReportPreviewModal({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-white px-5 py-3.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-white px-5 py-3.5">
           <button
             type="button"
             onClick={onClose}
@@ -469,9 +474,15 @@ export function useReportColumns(defaultColumns, allColumns) {
 export function applyAdvancedFilters(rows, advanced, fieldAccessors = {}) {
   if (!advanced?.length) return rows || [];
 
+  const toList = (val) => {
+    if (Array.isArray(val)) return val.map(String).map((v) => v.trim().toLowerCase()).filter(Boolean);
+    if (val == null || val === '') return [];
+    return [String(val).trim().toLowerCase()].filter(Boolean);
+  };
+
   return (rows || []).filter((row) =>
     advanced.every((cond) => {
-      if (cond.field === 'properties') {
+      if (cond.field === 'properties' || cond.field === 'assetTypeProperty') {
         if (!cond.assetTypeId || !cond.val || !cond.listValue || !Array.isArray(cond.assetIds)) return true;
         const assetId = row.asset_id || row.assetId || row['Asset ID'] || row.Asset;
         const hasAsset = cond.assetIds.map(String).includes(String(assetId));
@@ -486,19 +497,16 @@ export function applyAdvancedFilters(rows, advanced, fieldAccessors = {}) {
 
       if (val == null || val === '' || (Array.isArray(val) && !val.length)) return true;
 
-      const cellStr = String(cell ?? '').toLowerCase();
-      const valStr = String(val).toLowerCase();
+      const cellStr = String(cell ?? '').trim().toLowerCase();
+      const valStr = String(Array.isArray(val) ? val[0] : val).trim().toLowerCase();
+      const valList = toList(val);
 
       if (op === '=' || op === 'equals' || op === 'is') {
-        if (Array.isArray(val)) {
-          return val.map(String).map((v) => v.toLowerCase()).includes(cellStr);
-        }
+        if (valList.length > 1) return valList.includes(cellStr);
         return cellStr === valStr;
       }
       if (op === '!=' || op === 'not equals') {
-        if (Array.isArray(val)) {
-          return !val.map(String).map((v) => v.toLowerCase()).includes(cellStr);
-        }
+        if (valList.length > 1) return !valList.includes(cellStr);
         return cellStr !== valStr;
       }
       if (op === 'contains' || op === 'like') return cellStr.includes(valStr);
@@ -510,17 +518,19 @@ export function applyAdvancedFilters(rows, advanced, fieldAccessors = {}) {
       if (op === '≤' || op === '<=' || op === 'less than or equal') {
         return Number(cell) <= Number(val);
       }
-      if (op === 'has any' && Array.isArray(val)) {
-        return val.map(String).map((v) => v.toLowerCase()).includes(cellStr);
+      if (op === 'has any') {
+        if (!valList.length) return true;
+        return valList.some((v) => cellStr === v || cellStr.includes(v));
       }
-      if (op === 'has all' && Array.isArray(val)) {
-        return val
-          .map(String)
-          .map((v) => v.toLowerCase())
-          .every((v) => cellStr === v || cellStr.includes(v));
+      if (op === 'has all') {
+        if (!valList.length) return true;
+        // Single-cell fields: treat as membership (same as has any) when only one value.
+        if (valList.length === 1) return cellStr === valList[0] || cellStr.includes(valList[0]);
+        return valList.every((v) => cellStr === v || cellStr.includes(v));
       }
-      if (op === 'has none' && Array.isArray(val)) {
-        return !val.map(String).map((v) => v.toLowerCase()).includes(cellStr);
+      if (op === 'has none') {
+        if (!valList.length) return true;
+        return !valList.some((v) => cellStr === v || cellStr.includes(v));
       }
       return true;
     }),

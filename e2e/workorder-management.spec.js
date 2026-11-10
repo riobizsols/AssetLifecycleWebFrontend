@@ -100,7 +100,7 @@ async function openList(page) {
   });
   await expect(
     page
-      .getByRole('columnheader', { name: 'Description' })
+      .getByRole('columnheader', { name: 'Asset' })
       .or(page.getByText('No work orders found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
@@ -526,7 +526,7 @@ async function ensureWorkOrderOnList(page, assetName) {
  */
 async function openStayDetail(page, assetName) {
   await openList(page);
-  await filterByColumn(page, 'Description', assetName).catch(() => {});
+  await filterByColumn(page, 'Asset', assetName).catch(() => {});
   const row = listRow(page, assetName);
   await expect(row).toBeVisible({ timeout: 10000 }).catch(() => {});
   if (!(await row.isVisible().catch(() => false))) return false;
@@ -549,7 +549,7 @@ test.describe('Workorder Management', () => {
 
   test('WO-02 List columns that are on the table', async ({ page }) => {
     await openList(page);
-    for (const name of ['Description', 'Maintenance Type', 'Start Date', 'Status', 'Asset Type']) {
+    for (const name of ['Asset', 'Maintenance Type', 'Start Date', 'Status', 'Asset Type']) {
       await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'Work Order ID' })).toHaveCount(0);
@@ -588,7 +588,7 @@ test.describe('Workorder Management', () => {
     }
     const description = (await first.locator('td').first().innerText()).trim();
     expect(description).toBeTruthy();
-    await filterByColumn(page, 'Description', description);
+    await filterByColumn(page, 'Asset', description);
     await expect(listRow(page, description)).toBeVisible();
     await clearColumnFilter(page);
     await expect(page.locator('tbody tr').first()).toBeVisible();
@@ -596,7 +596,7 @@ test.describe('Workorder Management', () => {
 
   test('WO-05 Sort by description', async ({ page }) => {
     await openList(page);
-    await clickSortCycle(page, 'Description');
+    await clickSortCycle(page, 'Asset');
   });
 
   test('WO-06 There is no add or delete', async ({ page }) => {
@@ -622,7 +622,7 @@ test.describe('Workorder Management', () => {
 
   test('WO-09 Find the E2E row, or create a breakdown work order', async ({ page }) => {
     await ensureWorkOrderOnList(page, stayAsset);
-    await filterByColumn(page, 'Description', stayAsset);
+    await filterByColumn(page, 'Asset', stayAsset);
     await expect(listRow(page, stayAsset)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
@@ -709,13 +709,13 @@ test.describe('Workorder Management', () => {
     await openStayDetail(page, stayAsset).catch(() => {});
     await page.getByText('Work Orders', { exact: true }).first().click({ timeout: 8000 }).catch(() => {});
     await expect(page).toHaveURL(/\/workorder-management$/).catch(() => {});
-    await filterByColumn(page, 'Description', stayAsset).catch(() => {});
+    await filterByColumn(page, 'Asset', stayAsset).catch(() => {});
     await expect(listRow(page, stayAsset)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('WO-18 Do not change another work order', async ({ page }) => {
     await openList(page).catch(() => {});
-    await filterByColumn(page, 'Description', stayAsset).catch(() => {});
+    await filterByColumn(page, 'Asset', stayAsset).catch(() => {});
     await expect(listRow(page, stayAsset)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(page).toHaveURL(/\/workorder-management$/).catch(() => {});
   });
@@ -724,10 +724,10 @@ test.describe('Workorder Management', () => {
     await createOurAsset(page, stay2Asset).catch(() => {});
     await createMaintenanceOnAsset(page, stay2Asset).catch(() => {});
     await ensureWorkOrderOnList(page, stay2Asset).catch(() => {});
-    await filterByColumn(page, 'Description', stayAsset).catch(() => {});
+    await filterByColumn(page, 'Asset', stayAsset).catch(() => {});
     await expect(listRow(page, stayAsset)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await clearColumnFilter(page).catch(() => {});
-    await filterByColumn(page, 'Description', stay2Asset).catch(() => {});
+    await filterByColumn(page, 'Asset', stay2Asset).catch(() => {});
     await expect(listRow(page, stay2Asset)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 });

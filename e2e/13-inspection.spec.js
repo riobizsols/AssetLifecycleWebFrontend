@@ -239,7 +239,7 @@ test.describe('Inspection execution detail', () => {
     await expect(questions.first()).toBeVisible({ timeout: 20000 });
     await expect(page.getByText('Complete Inspection').first()).toBeVisible();
     await expect(page.getByText('Notes').first()).toBeVisible();
-    await expect(page.getByText('Trigger Maintenance').first()).toBeVisible();
+    await expect(page.getByText('Trigger Maintenance')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Complete Inspection' })).toBeVisible();
 

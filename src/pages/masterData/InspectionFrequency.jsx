@@ -64,7 +64,7 @@ const InspectionFrequency = () => {
   const [techLoading, setTechLoading] = useState(false);
 
   useEffect(() => {
-    loadPageData({ revalidate: true, formatOpts }).catch(() => {
+    loadPageData({ revalidate: true, force: true, formatOpts }).catch(() => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: 'Failed to load frequencies', type: 'error' });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,7 +174,7 @@ const InspectionFrequency = () => {
           if (detailedItems.length > 0) {
             aatic_id = detailedItems[0].aatic_id;
           } else {
-            showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_NOCHECKLISTITEMSFORMAPPING_5E25E3BE', fallbackText: 'No checklist items for mapping', type: 'error' });
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_NOCHECKLISTITEMSFORMAPPING_5E25E3BE', fallbackText: 'Map an inspection checklist for this asset type first', type: 'error' });
             setSaving(false);
             return;
           }

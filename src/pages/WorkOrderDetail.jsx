@@ -19,6 +19,17 @@ import {
   BuildingOffice2Icon
 } from "@heroicons/react/24/outline";
 
+function isInhouseWorkOrder(workOrder) {
+  if (!workOrder) return false;
+  if (workOrder.is_inhouse === true) return true;
+  const maint = String(workOrder.maintained_by || '')
+    .toLowerCase()
+    .replace(/[\s_-]/g, '');
+  if (!maint) return false;
+  if (maint.includes('vendor')) return false;
+  return maint.includes('inhouse') || maint.includes('self') || maint === 'internal';
+}
+
 const WorkOrderDetail = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -35,6 +46,9 @@ const WorkOrderDetail = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showAllAssets, setShowAllAssets] = useState(false);
+
+  const inhouse = isInhouseWorkOrder(workOrder);
+  const providerTab = inhouse ? 'technician' : 'vendor';
 
   useEffect(() => {
     fetchWorkOrderDetails();
@@ -58,7 +72,12 @@ const WorkOrderDetail = () => {
       const aligned = {
         ...workOrderData,
         final_approver_name: workOrderData.final_approver_name,
-        approval_date: Array.isArray(workOrderData.approval_date) ? workOrderData.approval_date[0] : workOrderData.approval_date,
+        approval_date: (() => {
+          const raw = Array.isArray(workOrderData.approval_date)
+            ? workOrderData.approval_date[0]
+            : workOrderData.approval_date;
+          return raw || workOrderData.created_on || workOrderData.changed_on || null;
+        })(),
         recent_activities: Array.isArray(workOrderData.recent_activities) ? workOrderData.recent_activities : [],
         // Group maintenance information
         is_group_maintenance: workOrderData.is_group_maintenance || false,
@@ -307,15 +326,21 @@ const WorkOrderDetail = () => {
           </button>
 
           <button 
-            onClick={() => setActiveTab('vendor')}
+            onClick={() => setActiveTab(providerTab)}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'vendor' 
+              activeTab === providerTab 
                 ? 'border-blue-500 text-blue-600' 
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            <BuildingOffice2Icon className="w-5 h-5 inline mr-2" />
-            {t('workorderManagement.vendor')}
+            {inhouse ? (
+              <UserGroupIcon className="w-5 h-5 inline mr-2" />
+            ) : (
+              <BuildingOffice2Icon className="w-5 h-5 inline mr-2" />
+            )}
+            {inhouse
+              ? t('workorderManagement.technician')
+              : t('workorderManagement.vendor')}
           </button>
                     <button
             onClick={() => setActiveTab('checklist')}
@@ -466,26 +491,53 @@ const WorkOrderDetail = () => {
             )}
           </section>
 
-          {/* Vendor Section */}
+          {/* Provider Section (Technician for in-house, Vendor otherwise) */}
           <section className="page-break">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.vendorInformation')}</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">
+              {inhouse
+                ? t('workorderManagement.technicianInformation')
+                : t('workorderManagement.vendorInformation')}
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
-                <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
-                <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
-                <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
-                <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
-              </div>
+              {inhouse ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.technicianName')}</label>
+                    <p className="text-gray-900">{workOrder.technician_name || t('workorderManagement.notAssigned')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.employeeId')}</label>
+                    <p className="text-gray-900">{workOrder.emp_int_id || t('workorderManagement.notAvailable')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                    <p className="text-gray-900">{workOrder.technician_email || t('workorderManagement.notAvailable')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                    <p className="text-gray-900">{workOrder.technician_phno || t('workorderManagement.notAvailable')}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
+                    <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
+                    <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                    <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                    <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceType')}</label>
                 <p className="text-gray-900">{workOrder.maintenance_type_name || t('workorderManagement.notAvailable')}</p>
@@ -708,26 +760,53 @@ const WorkOrderDetail = () => {
             </section>
           )}
 
-          {activeTab === 'vendor' && (
+          {activeTab === providerTab && (
             <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.vendorInformation')}</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">
+                {inhouse
+                  ? t('workorderManagement.technicianInformation')
+                  : t('workorderManagement.vendorInformation')}
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
-                </div>
+                {inhouse ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.technicianName')}</label>
+                      <p className="text-gray-900">{workOrder.technician_name || t('workorderManagement.notAssigned')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.employeeId')}</label>
+                      <p className="text-gray-900">{workOrder.emp_int_id || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                      <p className="text-gray-900">{workOrder.technician_email || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                      <p className="text-gray-900">{workOrder.technician_phno || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceType')}</label>
                   <p className="text-gray-900">{workOrder.maintenance_type_name || t('workorderManagement.notAvailable')}</p>
@@ -957,27 +1036,54 @@ const WorkOrderDetail = () => {
             </>
           )}
 
-          {/* Vendor Tab Content */}
-          {activeTab === 'vendor' && (
+          {/* Technician (in-house) / Vendor tab content */}
+          {activeTab === providerTab && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.vendorInformation')}</h2>
+              <h2 className="text-lg font-semibold mb-4">
+                {inhouse
+                  ? t('workorderManagement.technicianInformation')
+                  : t('workorderManagement.vendorInformation')}
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
-                  <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
-                </div>
+                {inhouse ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.technicianName')}</label>
+                      <p className="text-gray-900">{workOrder.technician_name || t('workorderManagement.notAssigned')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.employeeId')}</label>
+                      <p className="text-gray-900">{workOrder.emp_int_id || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                      <p className="text-gray-900">{workOrder.technician_email || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                      <p className="text-gray-900">{workOrder.technician_phno || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                      <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceType')}</label>
                   <p className="text-gray-900">{workOrder.maintenance_type_name || t('workorderManagement.notAvailable')}</p>

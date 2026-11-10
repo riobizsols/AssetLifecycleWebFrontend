@@ -342,11 +342,9 @@ const DepartmentsAsset = () => {
                 {localizedDepartments
                   .filter((d) => {
                     const q = searchDept.toLowerCase();
-                    return (
-                      d.displayText.toLowerCase().includes(q) ||
-                      d.text.toLowerCase().includes(q) ||
-                      d.dept_id.toLowerCase().includes(q)
-                    );
+                    const name = String(d.displayText || d.text || d.dept_name || '').toLowerCase();
+                    const id = String(d.dept_id || '').toLowerCase();
+                    return name.includes(q) || id.includes(q);
                   })
                   .map((dept) => (
                     <div
