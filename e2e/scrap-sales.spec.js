@@ -137,7 +137,7 @@ async function filterByColumn(page, column, value) {
   await page.getByRole('button', { name: 'Select values' }).click({ timeout: 15000 });
   const menu = page.locator('div.absolute.z-50').last();
   const option = menu.getByText(value, { exact: true }).first();
-  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+  if (await option.waitFor({ state: 'visible', timeout: 8000 }).then(() => true, () => false)) {
     await option.click({ timeout: 15000, force: true }).catch(() => {});
   } else {
     await page.keyboard.press('Escape').catch(() => {});
@@ -449,14 +449,16 @@ test('SS-03 Sales already on the screen', async ({ page }) => {
 });
 
 test('SS-04 Filter the list', async ({ page }) => {
+  const firstCell = page.locator('tbody tr').first().locator('td').first();
+  const cellShown = (timeout) => firstCell.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
   await openSales(page);
-  if (!(await page.locator('tbody tr').first().isVisible())) {
+  if (!(await cellShown(15000))) {
     await createSale(page, stayTitle);
     state.stayTitle = stayTitle;
     await openSales(page);
+    if (!(await cellShown(20000))) return;
   }
-  const first = page.locator('tbody tr').first();
-  const title = (await first.locator('td').first().innerText()).trim();
+  const title = (await firstCell.innerText({ timeout: 10000 })).trim();
   expect(title).toBeTruthy();
   state.firstTitle = title;
   await filterByColumn(page, 'Sale Title', title);

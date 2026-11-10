@@ -258,7 +258,8 @@ async function ensureParentAssetType(page) {
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter asset type name').fill(typeName, { timeout: 15000 });
-  await page.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 15000 });
+  // react-hot-toast overlays intercept Playwright's pointer click on Save.
+  await clickUnblocked(page, 'Save');
   await expectToast(page, `Asset type "${typeName}" created successfully`);
   state.typeName = typeName;
 }
@@ -336,7 +337,7 @@ async function fillAssetFormWithSerial(page, name, serial) {
   await page.locator('input[name="expiryDate"]').fill(ymd(365), { timeout: 15000 });
   await page.locator('input[name="purchaseCost"]').fill('1', { timeout: 15000 });
   if (!(await selectProductVendorOnForm(page, state.vendorName))) return;
-  await page.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 15000 });
+  await clickUnblocked(page, 'Save');
 }
 
 /**

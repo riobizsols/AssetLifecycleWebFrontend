@@ -348,10 +348,11 @@ export async function columnValues(page, header) {
   }
   if (index < 0) return [];
   const cells = page.locator(`table tbody tr td:nth-child(${index + 1})`);
-  const count = Math.min(await cells.count(), 25);
+  const count = Math.min(await cells.count().catch(() => 0), 25);
   const values = [];
   for (let i = 0; i < count; i += 1) {
-    values.push(((await cells.nth(i).innerText()) || '').trim());
+    const text = await cells.nth(i).innerText({ timeout: 8000 }).catch(() => '');
+    values.push((text || '').trim());
   }
   return values;
 }

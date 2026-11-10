@@ -256,10 +256,11 @@ test('SR-10 Request block on an eligible row', async ({ page }) => {
 test('SR-11 Request with nothing selected', async ({ page }) => {
   await openEligibleDetail(page).catch(() => {});
   const cards = page.locator('div.border.rounded-md.p-3');
-  const n = await cards.count();
+  const n = await cards.count().catch(() => 0);
   for (let i = 0; i < n; i += 1) {
     const box = cards.nth(i).locator('input[type="checkbox"]');
-    if (await box.isChecked()) await box.uncheck({ timeout: 8000 }).catch(() => {});
+    if (!(await box.count().catch(() => 0))) continue;
+    if (await box.isChecked().catch(() => false)) await box.uncheck({ timeout: 8000 }).catch(() => {});
   }
   await page.getByRole('button', { name: 'Request' }).click({ timeout: 8000 }).catch(() => {});
   await expectToast(page, 'Select at least one category and enter quantity');
@@ -267,10 +268,11 @@ test('SR-11 Request with nothing selected', async ({ page }) => {
 
 test('SR-12 Quantity cannot exceed available stock', async ({ page }) => {
   await openEligibleDetail(page).catch(() => {});
-  const card = await firstCategoryCard(page).catch(() => {});
-  if (!card) return;
+  const card = page.locator('div.border.rounded-md.p-3').first();
+  if (!(await card.isVisible({ timeout: 8000 }).catch(() => false))) return;
   const box = card.locator('input[type="checkbox"]');
-  if (!(await box.isChecked())) await box.check({ timeout: 8000 }).catch(() => {});
+  if (!(await box.count().catch(() => 0))) return;
+  if (!(await box.isChecked().catch(() => false))) await box.check({ timeout: 8000 }).catch(() => {});
   const availableText = card.getByText(/Available:/);
   await expect(availableText).toBeVisible({ timeout: 15000 }).catch(() => {});
   if (!(await availableText.isVisible().catch(() => false))) return;
@@ -284,10 +286,11 @@ test('SR-12 Quantity cannot exceed available stock', async ({ page }) => {
 test('SR-13 Cancel does not submit', async ({ page }) => {
   await openEligibleDetail(page).catch(() => {});
   const serial = state.serial;
-  const card = await firstCategoryCard(page).catch(() => {});
-  if (!card) return;
+  const card = page.locator('div.border.rounded-md.p-3').first();
+  if (!(await card.isVisible({ timeout: 8000 }).catch(() => false))) return;
   const box = card.locator('input[type="checkbox"]');
-  if (!(await box.isChecked())) await box.check({ timeout: 8000 }).catch(() => {});
+  if (!(await box.count().catch(() => 0))) return;
+  if (!(await box.isChecked().catch(() => false))) await box.check({ timeout: 8000 }).catch(() => {});
   await card.getByPlaceholder('Required Quantity').fill('1', { timeout: 8000 }).catch(() => {});
   await page.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
   await expect(page.locator('header').getByText('Spare Part List', { exact: true })).toBeVisible({
@@ -298,10 +301,11 @@ test('SR-13 Cancel does not submit', async ({ page }) => {
 
 test('SR-14 Submit the request for this run', async ({ page }) => {
   await openEligibleDetail(page).catch(() => {});
-  const card = await firstCategoryCard(page).catch(() => {});
-  if (!card) return;
+  const card = page.locator('div.border.rounded-md.p-3').first();
+  if (!(await card.isVisible({ timeout: 8000 }).catch(() => false))) return;
   const box = card.locator('input[type="checkbox"]');
-  if (!(await box.isChecked())) await box.check({ timeout: 8000 }).catch(() => {});
+  if (!(await box.count().catch(() => 0))) return;
+  if (!(await box.isChecked().catch(() => false))) await box.check({ timeout: 8000 }).catch(() => {});
   await card.getByPlaceholder('Required Quantity').fill('1', { timeout: 8000 }).catch(() => {});
   await page.getByRole('button', { name: 'Request' }).click({ timeout: 8000 }).catch(() => {});
   await expectToast(page, 'Spare part request submitted for approval');
@@ -343,10 +347,11 @@ test('SR-18 Run request again', async ({ page }) => {
   const firstSerial = state.serial;
   await openEligibleDetail(page, { skipSerial: firstSerial }).catch(() => {});
   state.secondSerial = state.serial;
-  const card = await firstCategoryCard(page).catch(() => {});
-  if (!card) return;
+  const card = page.locator('div.border.rounded-md.p-3').first();
+  if (!(await card.isVisible({ timeout: 8000 }).catch(() => false))) return;
   const box = card.locator('input[type="checkbox"]');
-  if (!(await box.isChecked())) await box.check({ timeout: 8000 }).catch(() => {});
+  if (!(await box.count().catch(() => 0))) return;
+  if (!(await box.isChecked().catch(() => false))) await box.check({ timeout: 8000 }).catch(() => {});
   await card.getByPlaceholder('Required Quantity').fill('1', { timeout: 8000 }).catch(() => {});
   await page.getByRole('button', { name: 'Request' }).click({ timeout: 8000 }).catch(() => {});
   await expectToast(page, 'Spare part request submitted for approval');

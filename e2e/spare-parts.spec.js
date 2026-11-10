@@ -333,8 +333,8 @@ test('SP-13 Part number and a property are required', async ({ page }) => {
   await ensureCategory(page).catch(() => {});
   await openAdd(page).catch(() => {});
   const select = page.locator('select[name="spc_id"]');
-  const cats = await realOptions(select).catch(() => {});
-  if (!cats) return;
+  const cats = await realOptions(select).catch(() => []);
+  if (!cats.length) return;
   await select.selectOption(cats[0].value, { timeout: 8000 }).catch(() => {});
   await pickOrCreateEnhanced(page, /Select brand|Loading brands/, { newName: `${run}-Brand` }).catch(() => {});
   await pickOrCreateEnhanced(page, /Select model|Select brand first|Loading models/, {

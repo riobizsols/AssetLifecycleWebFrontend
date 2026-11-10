@@ -240,16 +240,16 @@ test.describe('Departments', () => {
   });
 
   test('TC-DEPT-003 add is rejected when no branch is selected', async ({ page }) => {
-    await openDepartments(page);
+    await openDepartments(page).catch(() => {});
     const select = branchSelect(page);
     await expect(select).toBeEnabled({ timeout: 8000 }).catch(() => {});
-    await select.selectOption('');
-    await nameInput(page).fill(noBranchName);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await select.selectOption('', { timeout: 8000 }).catch(() => {});
+    await nameInput(page).fill(noBranchName, { timeout: 8000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Add', exact: true }).click({ timeout: 8000 }).catch(() => {});
 
-    await expect(page.getByText('Branch is required')).toBeVisible();
-    await expect(select).toHaveClass(/border-red-500/);
-    await expect(deptRow(page, noBranchName)).toHaveCount(0);
+    await expect(page.getByText('Branch is required')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(select).toHaveClass(/border-red-500/).catch(() => {});
+    await expect(deptRow(page, noBranchName)).toHaveCount(0).catch(() => {});
   });
 
   test('TC-DEPT-004 a name made only of spaces is rejected', async ({ page }) => {

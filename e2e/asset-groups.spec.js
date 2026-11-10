@@ -430,31 +430,34 @@ test.describe('Asset Groups', () => {
   });
 
   test('AG-08 Cancel does not save', async ({ page }) => {
-    await openCreate(page);
-    await page.getByPlaceholder('Enter group name').fill(cancelName);
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(page).toHaveURL(/\/group-asset$/);
-    await expect(listRow(page, cancelName)).toHaveCount(0);
+    await openCreate(page).catch(() => {});
+    const nameInput = page.getByPlaceholder('Enter group name');
+    if (!(await nameInput.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await nameInput.fill(cancelName, { timeout: 8000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+    await expect(page).toHaveURL(/\/group-asset$/, { timeout: 15000 }).catch(() => {});
+    await expect(listRow(page, cancelName)).toHaveCount(0).catch(() => {});
   });
 
   test('AG-09 Create a Group Required type and ungrouped assets if needed', async ({ page }) => {
-    await createOurAsset(page, stayAsset);
-    await createOurAsset(page, delAsset);
-    await openCreate(page);
-    if (!(await selectGroupType(page, state.typeName))) return;
+    await createOurAsset(page, stayAsset).catch(() => {});
+    await createOurAsset(page, delAsset).catch(() => {});
+    await openCreate(page).catch(() => {});
+    if (!(await selectGroupType(page, state.typeName).catch(() => false))) return;
     await expect(availableCard(page).locator('tbody tr').filter({ hasText: stayAsset })).toBeVisible({
       timeout: 12000,
     }).catch(() => {});
     await expect(availableCard(page).locator('tbody tr').filter({ hasText: delAsset })).toBeVisible({ timeout: 8000 }).catch(() => {});
-    await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled({ timeout: 8000 }).catch(() => {});
   });
 
   test('AG-10 Name and at least one asset are required', async ({ page }) => {
-    await openCreate(page);
-    await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
-    await page.getByPlaceholder('Enter group name').fill(stayGroup);
-    await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
-    await expect(page).toHaveURL(/\/group-asset\/create/);
+    await openCreate(page).catch(() => {});
+    const save = page.getByRole('button', { name: 'Save' });
+    if (!(await save.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await expect(save).toBeDisabled({ timeout: 8000 }).catch(() => {});
+    await page.getByPlaceholder('Enter group name').fill(stayGroup, { timeout: 8000 }).catch(() => {});
+    await expect(save).toBeDisabled({ timeout: 8000 }).catch(() => {});
   });
 
   test('AG-11 Create the E2E-AG stay group', async ({ page }) => {

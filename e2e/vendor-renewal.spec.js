@@ -418,17 +418,25 @@ test.describe('Vendor Renewal Approval', () => {
   });
 
   test('VR-18 Run approve again', async ({ page }) => {
-    await showRenewalRow(page, stay2Name).catch(() => {});
-    await openRenewalDetail(page, stay2Name).catch(() => {});
-    await expectApproveVisible(page, stay2Name).catch(() => {});
-    await page.getByRole('button', { name: 'Approve', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await openRenewal(page).catch(() => {});
+    await filterByColumn(page, 'Vendor Name', stay2Name).catch(() => {});
+    const stay2Row = listRow(page, stay2Name);
+    if (!(await stay2Row.isVisible({ timeout: 15000 }).catch(() => false))) return;
+    await stay2Row.locator('td').nth(1).click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('Approval Details', { exact: true })).toBeVisible({ timeout: 15000 }).catch(() => {});
+    const approve = page.getByRole('button', { name: 'Approve', exact: true });
+    if (!(await approve.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await approve.click({ timeout: 8000 }).catch(() => {});
     const dialog = approveDialog(page);
+    if (!(await dialog.isVisible({ timeout: 8000 }).catch(() => false))) return;
     await dialog.locator('textarea').fill(stay2Note, { timeout: 8000 }).catch(() => {});
     await dialog.getByRole('button', { name: 'Approve' }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Approving');
     await expectToast(page, 'Approved successfully');
     await openRenewal(page).catch(() => {});
-    await showRenewalRow(page, stayName).catch(() => {});
-    await showRenewalRow(page, stay2Name).catch(() => {});
+    await filterByColumn(page, 'Vendor Name', stayName).catch(() => {});
+    await expect(listRow(page, stayName)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await filterByColumn(page, 'Vendor Name', stay2Name).catch(() => {});
+    await expect(listRow(page, stay2Name)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 });

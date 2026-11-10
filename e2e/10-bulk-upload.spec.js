@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, dismissToasts, fillReactInput } from './helpers/screenAccess.js';
+import { clickUnblocked, clickUntilResponse, dismissToasts, fillReactInput } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. A successful commit stays in the playwright tenant.
@@ -55,6 +55,23 @@ const employeeHeaders = [
   'joining_date', 'language_code',
 ];
 
+/**
+ * The dropdown fills from an API call, so a record created a moment ago can be missing on first load.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} url
+ * @param {import('@playwright/test').Locator} select
+ * @param {string} value
+ */
+async function openWithOption(page, url, select, value) {
+  const option = select.locator(`option[value="${value}"]`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await gotoProtected(page, url);
+    const loaded = await option.waitFor({ state: 'attached', timeout: 20000 }).then(() => true, () => false);
+    if (loaded) return;
+  }
+  await expect(option).toBeAttached({ timeout: 1000 });
+}
+
 test.describe('Bulk Upload', () => {
   test('creates the org, branch, department, vendor, and asset type the files need', async ({ page }) => {
     await gotoProtected(page, `${BASE}/master-data/asset-types/add`);
@@ -70,22 +87,39 @@ test.describe('Bulk Upload', () => {
     expect(dropdownTypeId).toMatch(/^[A-Za-z][A-Za-z0-9_]*[0-9]{3,}$/);
     expect(orgId).toBeTruthy();
 
+    // Stale vendorAddDraft (vendorSaved + id from an earlier spec) makes Save skip
+    // create-vendor entirely — clear it before opening the form.
+    await page.evaluate(() => {
+      sessionStorage.removeItem('vendorAddDraft');
+      sessionStorage.removeItem('vendorProductDraft');
+      sessionStorage.removeItem('vendorServiceDraft');
+      sessionStorage.removeItem('products');
+      sessionStorage.removeItem('services');
+      sessionStorage.removeItem('spareSupplies');
+    });
     await gotoProtected(page, `${BASE}/master-data/add-vendor`);
-    await page.locator('input[name="vendor_name"]').fill(`${run} Vendor`);
-    await page.locator('input[name="company_name"]').fill(`${run} Company`);
-    await page.locator('input[name="company_email"]').fill(`${run.toLowerCase()}.vendor@example.com`);
-    await page.locator('input[name="contact_person_number"]').fill('9999900002');
-    await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
-    const vendorResponse = page.waitForResponse(
-      (response) => response.request().method() === 'POST' && response.url().includes('/create-vendor'),
-      { timeout: 60000 },
+    const vendorName = page.locator('input[name="vendor_name"]');
+    await expect(vendorName).toBeVisible({ timeout: 30000 });
+    await fillReactInput(vendorName, `${run} Vendor`);
+    await fillReactInput(page.locator('input[name="company_name"]'), `${run} Company`);
+    await fillReactInput(
+      page.locator('input[name="company_email"]'),
+      `${run.toLowerCase()}.vendor@example.com`,
     );
-    await clickUnblocked(page, 'Save');
-    const vendorBody = await (await vendorResponse).json();
+    await fillReactInput(page.locator('input[name="contact_person_number"]'), '9999900002');
+    await fillReactInput(page.locator('input[name="contact_person_name"]'), `${run} Contact`);
+    await page.locator('input[name="contact_person_name"]').blur().catch(() => {});
+    const vendorResponse = await clickUntilResponse(
+      page,
+      'Save',
+      (response) => response.request().method() === 'POST' && response.url().includes('/create-vendor'),
+      { attempts: 3, timeout: 25000 },
+    );
+    const vendorBody = await vendorResponse.json();
     vendorId = vendorBody.data.vendor_id;
     expect(vendorId).toMatch(/^V\d{3}$/);
 
-    await gotoProtected(page, `${BASE}/master-data/branches/add`);
+    await openWithOption(page, `${BASE}/master-data/branches/add`, page.locator('select[name="org_id"]'), orgId);
     await page.locator('select[name="org_id"]').selectOption(orgId);
     await page.locator('input[name="text"]').fill(`${run} Branch`);
     await page.locator('input[name="branch_code"]').fill(`B${stamp.slice(-4)}`);
@@ -98,7 +132,7 @@ test.describe('Bulk Upload', () => {
     branchId = (await (await branchResponse).json()).branch_id;
     expect(branchId).toBeTruthy();
 
-    await gotoProtected(page, `${BASE}/master-data/departments`);
+    await openWithOption(page, `${BASE}/master-data/departments`, page.locator('select').first(), branchId);
     const deptIdBox = page.getByPlaceholder(/Department Id/i);
     await expect(deptIdBox).toHaveValue(/DPT\d+/, { timeout: 30000 });
     await page.locator('select').first().selectOption(branchId);

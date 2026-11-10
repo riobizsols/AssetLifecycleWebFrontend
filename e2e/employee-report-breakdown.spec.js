@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, openTitledScreen, clickSortCycle, chooseLabeledOption, selectNativeOption, clickLocatorUnblocked } from './helpers/screenAccess.js';
+import { headerAddButton, openTitledScreen, clickSortCycle, chooseLabeledOption, selectNativeOption, clickLocatorUnblocked, dismissToasts } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -246,6 +246,7 @@ async function ensureVendor(page) {
   await page.locator('input[name="company_email"]').fill(`pw.eb.${stamp}@test.com`);
   await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
   await page.locator('input[name="contact_person_number"]').fill('9876543210');
+  await dismissToasts(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
   state.vendorName = vendorName;
@@ -307,6 +308,7 @@ async function createMaintRequiredType(page) {
   });
   await page.getByPlaceholder('Enter asset type name').fill(createdTypeName);
   await page.locator('label').filter({ hasText: 'Require Maintenance' }).locator('input[type="checkbox"]').check();
+  await dismissToasts(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, `Asset type "${createdTypeName}" created successfully`);
   state.typeName = createdTypeName;

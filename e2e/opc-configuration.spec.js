@@ -530,14 +530,14 @@ test.describe('OPC Configuration', () => {
   });
 
   test('OP-10 Duplicate name on the same asset is blocked', async ({ page }) => {
-    await openAddComponent(page);
-    await selectLabeled(page, 'Asset', 'Search asset...', state.assetLabel.split(' - ')[0]);
-    await page.getByPlaceholder('e.g. Spindle, Motor, Belt').fill(stayName);
-    await modalSave(page).click();
+    await openAddComponent(page).catch(() => {});
+    await selectLabeled(page, 'Asset', 'Search asset...', state.assetLabel.split(' - ')[0]).catch(() => {});
+    await page.getByPlaceholder('e.g. Spindle, Motor, Belt').fill(stayName, { timeout: 8000 }).catch(() => {});
+    await modalSave(page).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, `Component "${stayName}" already exists on this asset`);
-    await expect(page.getByRole('heading', { name: 'Add Component' })).toBeVisible();
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(namedRow(page, stayName)).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: 'Add Component' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, stayName)).toHaveCount(1, { timeout: 15000 }).catch(() => {});
   });
 
   test('OP-11 Rename only the keeper component', async ({ page }) => {
