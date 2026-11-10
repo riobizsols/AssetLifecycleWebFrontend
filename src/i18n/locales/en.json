@@ -2011,6 +2011,7 @@
     "subtitle": "Review and approve maintenance requests",
     "assetType": "Asset Type",
     "assetID": "Asset ID",
+    "assetName": "Asset Name",
     "serialNumber": "Serial Number",
     "scheduledDate": "Scheduled Date",
     "vendor": "Vendor",

@@ -234,6 +234,7 @@ export default function MaintSupervisorApproval() {
   const isInhouseTech =
     isInhouseMaintenance &&
     Boolean(maintenanceData?.emp_int_id || maintenanceData?.header_emp_int_id);
+  const technicianAutofilled = Boolean(maintenanceData?.technician_autofilled);
   const technicianFieldsLocked =
     isInhouseTech &&
     Boolean(
@@ -479,11 +480,13 @@ export default function MaintSupervisorApproval() {
         
         // Initialize SLA records state with SLA values from vendor SLAs
         const initialRecords = {};
+        const defaultTechName = String(formData.technician_name || "").trim();
+        const defaultTechPhone = sanitizePhoneDigits(formData.technician_phno || "");
         filledSLAs.forEach(sla => {
           initialRecords[sla.sla_id] = {
             value: sla.value || "",
-            technician_name: "",
-            technician_phno: ""
+            technician_name: defaultTechName,
+            technician_phno: defaultTechPhone,
           };
         });
         // Don't overwrite existing records, just merge
@@ -491,7 +494,18 @@ export default function MaintSupervisorApproval() {
           const merged = { ...initialRecords };
           Object.keys(prev).forEach(key => {
             if (merged[key]) {
-              merged[key] = { ...merged[key], ...prev[key] };
+              merged[key] = {
+                ...merged[key],
+                ...prev[key],
+                technician_name:
+                  prev[key].technician_name ||
+                  merged[key].technician_name ||
+                  defaultTechName,
+                technician_phno:
+                  sanitizePhoneDigits(prev[key].technician_phno || "") ||
+                  merged[key].technician_phno ||
+                  defaultTechPhone,
+              };
             }
           });
           return merged;
@@ -2369,6 +2383,13 @@ export default function MaintSupervisorApproval() {
                     {technicianFieldsLocked && (
                       <p className="mt-1 text-xs text-gray-500">
                         Auto-filled from in-house technician{maintenanceData?.emp_int_id ? ` (${maintenanceData.emp_int_id})` : ''}
+                      </p>
+                    )}
+                    {!technicianFieldsLocked &&
+                      technicianAutofilled &&
+                      maintenanceData?.technician_autofill_source === 'vendor' && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Auto-filled from vendor contact{maintenanceData?.vendor_id ? ` (${maintenanceData.vendor_id})` : ''}
                       </p>
                     )}
                     {validationErrors.technician_name && (

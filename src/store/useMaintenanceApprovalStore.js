@@ -33,6 +33,12 @@ export function formatMaintenanceApprovalRows(items, t) {
 
   const formatted = (items || []).map((item) => ({
     ...item,
+    asset_name:
+      item.asset_name ||
+      item.asset_description ||
+      item.description ||
+      item.asset_id ||
+      '',
     raw_created_on: item.maintenance_created_on,
     raw_changed_on: item.maintenance_changed_on,
     raw_scheduled_date: item.scheduled_date,

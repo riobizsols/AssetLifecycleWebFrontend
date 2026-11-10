@@ -1934,6 +1934,7 @@
     "subtitle": "Wartungsanfragen prüfen und genehmigen",
     "assetType": "Anlagentyp",
     "assetID": "Anlagen-ID",
+    "assetName": "Anlagenname",
     "serialNumber": "Seriennummer",
     "scheduledDate": "Geplantes Datum",
     "vendor": "Lieferant",

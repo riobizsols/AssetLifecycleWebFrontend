@@ -47,6 +47,7 @@ const MaintenanceApprovalDetail = () => {
   const [columns] = useState([
     { label: t('maintenanceApproval.assetType'), name: "asset_type_name", visible: true },
     { label: t('maintenanceApproval.assetID'), name: "asset_id", visible: true },
+    { label: t('maintenanceApproval.assetName'), name: "asset_name", visible: true },
     { label: t('maintenanceApproval.serialNumber'), name: "serial_number", visible: true },
     { label: t('maintenanceApproval.scheduledDate'), name: "scheduled_date", visible: true },
     { label: t('maintenanceApproval.vendor'), name: "vendor", visible: true },

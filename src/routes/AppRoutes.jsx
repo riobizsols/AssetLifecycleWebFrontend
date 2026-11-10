@@ -738,6 +738,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/reports/upcoming-maintenance-schedule"
+          element={
+            <ProtectedRoute requiredAppId="UPCOMINGMAINTENANCESCHEDULE">
+              <MainLayout>
+                <UpcomingMaintenanceScheduleReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/reports/out-of-stock"
           element={
             <ProtectedRoute
