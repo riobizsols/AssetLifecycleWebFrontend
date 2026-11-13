@@ -22,10 +22,16 @@ export function formatMaintenanceApprovalRows(items, t) {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     try {
+      const raw = String(dateString).trim();
+      // Date-only (YYYY-MM-DD) — show calendar date, no timezone shift/time
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const [y, m, d] = raw.split('-').map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString();
+      }
       const date = new Date(dateString);
       if (Number.isNaN(date.getTime())) return '';
-      if (dateString.length <= 10) return date.toLocaleDateString();
-      return date.toLocaleString();
+      if (raw.length <= 10) return date.toLocaleDateString();
+      return date.toLocaleString(undefined, { timeZone: 'Asia/Kolkata' });
     } catch {
       return '';
     }

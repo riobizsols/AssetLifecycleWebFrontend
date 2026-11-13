@@ -127,7 +127,7 @@ const EditScrapSales = () => {
             setSaleDate(saleDateStr);
         } else {
             // Default to today if not set
-            setSaleDate(new Date().toISOString().split('T')[0]);
+            setSaleDate(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }));
         }
         
         if (header.collection_date) {
@@ -393,7 +393,7 @@ const EditScrapSales = () => {
         buyer_name: buyerDetails.buyer_name,
         buyer_company: buyerDetails.company_name?.trim() || '',
         buyer_phone: buyerDetails.buyer_contact,
-        sale_date: saleDate || new Date().toISOString().split('T')[0], // Required field
+        sale_date: saleDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
         collection_date: collectionDate || null,
         invoice_no: null, // Can be added if needed
         po_no: null, // Can be added if needed

@@ -12,6 +12,7 @@ import { toast } from "react-hot-toast";
 import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
 import { useMaintenanceSupervisorStore } from "../store/useMaintenanceSupervisorStore";
 import { SYSTEM_ADMIN_JOB_ROLE_ID } from "../utils/systemAdmin";
+import { toIstDateInput } from "../utils/istDate";
 
 function normalizeChangedOn(value) {
   if (value == null || value === '') return null;
@@ -23,6 +24,7 @@ function normalizeChangedOn(value) {
   return value;
 }
 
+/** Naive DB timestamps are IST wall-clock going forward (+05:30), not UTC. */
 function parseDbTimestamp(value) {
   const normalizedValue = normalizeChangedOn(value);
   if (!normalizedValue) return null;
@@ -35,8 +37,8 @@ function parseDbTimestamp(value) {
     const d = new Date(s);
     return Number.isNaN(d.getTime()) ? null : d;
   }
-  const normalized = s.includes('T') ? s : s.replace(' ', 'T');
-  const d = new Date(`${normalized}Z`);
+  const normalized = (s.includes('T') ? s : s.replace(' ', 'T')).replace(/\.\d+$/, '');
+  const d = new Date(`${normalized}+05:30`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -513,7 +515,7 @@ const MaintenanceApprovalDetail = () => {
       // Use selectedVendorId if changed, otherwise use original vendorId
       const vendorToSend = selectedVendorId !== null ? selectedVendorId : approvalDetails?.vendorId;
       // Use maintenanceDate if changed, otherwise use original dueDate
-      const dateToSend = maintenanceDate ? maintenanceDate : (approvalDetails?.dueDate ? new Date(approvalDetails.dueDate).toISOString().split('T')[0] : null);
+      const dateToSend = maintenanceDate ? maintenanceDate : (approvalDetails?.dueDate ? toIstDateInput(approvalDetails.dueDate) : null);
       
       console.log("Sending approval with:", { 
         vendorId: vendorToSend, 
@@ -895,8 +897,7 @@ const MaintenanceApprovalDetail = () => {
       
       // Always update maintenance date from approval details (to reflect saved changes)
       if (approvalDetails.dueDate) {
-        const date = new Date(approvalDetails.dueDate);
-        setMaintenanceDate(date.toISOString().split('T')[0]);
+        setMaintenanceDate(toIstDateInput(approvalDetails.dueDate));
       } else {
         setMaintenanceDate("");
       }
@@ -1173,7 +1174,7 @@ const MaintenanceApprovalDetail = () => {
                               console.log("Maintenance date changed to:", newDate);
                               
                               // Save maintenance date change immediately
-                              if (newDate && newDate !== (approvalDetails?.dueDate ? new Date(approvalDetails.dueDate).toISOString().split('T')[0] : "")) {
+                              if (newDate && newDate !== (approvalDetails?.dueDate ? toIstDateInput(approvalDetails.dueDate) : "")) {
                                 await saveMaintenanceDateChange(newDate);
                               }
                             }}

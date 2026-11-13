@@ -510,7 +510,7 @@ const CreateScrapSales = () => {
         buyer_name: buyerDetails.buyer_name,
         buyer_company: buyerDetails.company_name,
         buyer_phone: buyerDetails.buyer_contact,
-        sale_date: new Date().toISOString().split("T")[0],
+        sale_date: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
         collection_date: collectionDate,
         scrapAssets: selectedAssets.map((asset) => ({
           asd_id: asset.asd_id, // The backend expects asd_id

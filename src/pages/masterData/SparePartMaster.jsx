@@ -207,23 +207,30 @@ const SparePartMaster = () => {
       try {
         const res = await API.get('/properties/with-values');
         const rows = Array.isArray(res.data?.data) ? res.data.data : [];
-        setProperties(
-          rows.map((prop) => {
-            let listValues = prop.list_values || prop.values || [];
-            if (typeof listValues === 'string') {
-              try {
-                listValues = JSON.parse(listValues);
-              } catch {
-                listValues = [];
-              }
+        // Deduplicate by property label (case-insensitive) so duplicate catalog
+        // rows like multiple "Connectivity" tiles do not appear in the picker.
+        const mapped = [];
+        const seenLabels = new Set();
+        for (const prop of rows) {
+          const label = String(prop.property || '').trim();
+          const key = label.toLowerCase();
+          if (!key || seenLabels.has(key)) continue;
+          seenLabels.add(key);
+          let listValues = prop.list_values || prop.values || [];
+          if (typeof listValues === 'string') {
+            try {
+              listValues = JSON.parse(listValues);
+            } catch {
+              listValues = [];
             }
-            return {
-              id: prop.prop_id,
-              text: prop.property,
-              list_values: Array.isArray(listValues) ? listValues : [],
-            };
-          })
-        );
+          }
+          mapped.push({
+            id: prop.prop_id,
+            text: label,
+            list_values: Array.isArray(listValues) ? listValues : [],
+          });
+        }
+        setProperties(mapped);
       } catch (error) {
         console.error('Error fetching properties:', error);
         showBackendTextToast({

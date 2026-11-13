@@ -316,7 +316,14 @@ export function useConsolidatedAssetRegister() {
       const branchSet = new Set(draft.branchIds.map(String));
       rows = rows.filter((d) => !d.branch_id || branchSet.has(String(d.branch_id)));
     }
-    return rows;
+    // One option per dept_id (same name can still appear twice if two real depts exist).
+    const seen = new Set();
+    return rows.filter((d) => {
+      const id = String(d.id ?? '');
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   }, [filterOptions.departments, draft.orgIds, draft.branchIds]);
 
   return {

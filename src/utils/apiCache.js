@@ -1,6 +1,20 @@
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 const memoryCache = new Map();
+/** Per-key serial so an older in-flight fetch cannot overwrite a newer one after delete/invalidate. */
+const keySerial = new Map();
+
+function bumpKeySerial(key) {
+  const next = (keySerial.get(key) || 0) + 1;
+  keySerial.set(key, next);
+  return next;
+}
+
+function bumpKeySerialByPrefix(prefix) {
+  for (const key of keySerial.keys()) {
+    if (key.startsWith(prefix)) bumpKeySerial(key);
+  }
+}
 
 function normalizePath(url = '') {
   if (!url) return '';
@@ -44,15 +58,18 @@ export function setCache(key, data) {
 }
 
 export function invalidateCache(prefix) {
-  for (const key of memoryCache.keys()) {
+  for (const key of [...memoryCache.keys()]) {
     if (key.startsWith(prefix)) {
       memoryCache.delete(key);
     }
   }
+  // Invalidate in-flight writers for matching keys even if the entry was already cleared.
+  bumpKeySerialByPrefix(prefix);
 }
 
 export function clearCache() {
   memoryCache.clear();
+  keySerial.clear();
 }
 
 /** Suffix for list cache keys so ACM org/branch/dept changes don't reuse stale data. */
@@ -168,44 +185,49 @@ export async function fetchWithCache(key, fetcher, { ttlMs = DEFAULT_TTL_MS, for
   if (!force) {
     const cached = peekCache(key, ttlMs);
     if (cached != null) {
-      return { data: cached, fromCache: true };
+      return { data: cached, fromCache: true, superseded: false };
     }
   }
 
+  const serial = bumpKeySerial(key);
   const data = await fetcher();
+  if (keySerial.get(key) !== serial) {
+    return { data, fromCache: false, superseded: true };
+  }
   setCache(key, data);
-  return { data, fromCache: false };
+  return { data, fromCache: false, superseded: false };
 }
 
 /**
  * Stale-while-revalidate: return cache immediately (if any), then fetch fresh data.
  * `onFresh` is called when the network response arrives (even if unchanged).
+ * Older in-flight refreshes are ignored after a newer fetch or cache invalidation.
  */
 export async function fetchWithRevalidate(key, fetcher, {
   ttlMs = DEFAULT_TTL_MS,
   onFresh,
 } = {}) {
   const cached = peekCache(key, ttlMs);
-  let fromCache = false;
-
-  if (cached != null) {
-    fromCache = true;
-  }
+  const fromCache = cached != null;
+  const serial = bumpKeySerial(key);
 
   const refresh = async () => {
     const data = await fetcher();
+    if (keySerial.get(key) !== serial) {
+      return { data, superseded: true };
+    }
     setCache(key, data);
     onFresh?.(data, { fromCache: false });
-    return data;
+    return { data, superseded: false };
   };
 
-  if (cached != null) {
+  if (fromCache) {
     refresh().catch((err) => {
       console.error(`[apiCache] revalidate failed for ${key}:`, err);
     });
-    return { data: cached, fromCache: true };
+    return { data: cached, fromCache: true, superseded: false };
   }
 
-  const data = await refresh();
-  return { data, fromCache };
+  const { data, superseded } = await refresh();
+  return { data, fromCache: false, superseded };
 }

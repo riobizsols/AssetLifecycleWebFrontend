@@ -583,10 +583,8 @@ export const REPORTS = [
       { key: "belowSafety", label: "Below Safety Stock", type: "select", domain: ["Yes", "No"] },
       { key: "uom", label: "UoM", type: "multiselect", domain: [] },
     ],
-    defaultColumns: [
-      "Serial Number", "Part Number", "Category", "Brand", "Model", "UoM",
-      "Status", "Available Qty", "Store", "Vendor", "Purchase Date", "Unit Price"
-    ],
+    // Stock-count view: one row per part with available quantity (serial/lot detail via Columns)
+    defaultColumns: ["Category", "Part Number", "Available Qty"],
     allColumns: ALL_COLUMNS["spare-parts"] || [],
   },
   {

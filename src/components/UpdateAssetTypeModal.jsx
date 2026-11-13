@@ -278,12 +278,20 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       console.log('Response headers:', res.headers);
 
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        // Transform API data to dropdown format
-        const props = res.data.data.map(prop => ({
-          id: prop.prop_id || prop.id,
-          text: prop.property || prop.prop_name || prop.name,
-          value: prop.prop_id || prop.id
-        }));
+        // Transform API data to dropdown format (dedupe duplicate labels)
+        const seen = new Set();
+        const props = [];
+        for (const prop of res.data.data) {
+          const text = String(prop.property || prop.prop_name || prop.name || '').trim();
+          const key = text.toLowerCase();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          props.push({
+            id: prop.prop_id || prop.id,
+            text,
+            value: prop.prop_id || prop.id
+          });
+        }
         setProperties(props);
         console.log('Properties loaded:', props);
         console.log('Properties count:', props.length);

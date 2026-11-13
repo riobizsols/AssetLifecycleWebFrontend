@@ -80,7 +80,7 @@ const ExpiredAssets = () => {
       // Prepare scrap asset data
       const scrapData = {
         asset_id: selectedAsset.asset_id,
-        scrapped_date: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
+        scrapped_date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
         scrapped_by: user.emp_int_id.toString(), // Use emp_int_id from user
         location: selectedAsset.location || null,
         notes: notes || null,

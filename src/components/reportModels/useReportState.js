@@ -1255,7 +1255,36 @@ export function useReportState(reportId, report) {
           onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
           fetcher: async () => {
             const response = await sparePartsReportService.getSparePartsReport(requestFilters);
-            return response.data?.data || [];
+            const rows = response.data?.data || [];
+            // Collapse serial/lot lines into one stock-count row per part.
+            // Available Qty is already category-level; repeating it per serial is noise.
+            const byPart = new Map();
+            for (const row of rows) {
+              const key = [
+                row.Category ?? "",
+                row["Part Number"] ?? "",
+                row.Brand ?? "",
+                row.Model ?? "",
+                row.UoM ?? "",
+              ].join("\u0001");
+              if (byPart.has(key)) continue;
+              byPart.set(key, {
+                Category: row.Category ?? "",
+                "Part Number": row["Part Number"] ?? "",
+                Brand: row.Brand ?? "",
+                Model: row.Model ?? "",
+                UoM: row.UoM ?? "",
+                "Available Qty": Number(row["Available Qty"] ?? 0),
+                "Min Stock": row["Min Stock"],
+                "Reorder Level": row["Reorder Level"],
+                Store: row.Store ?? "",
+                Vendor: row.Vendor ?? "",
+              });
+            }
+            return Array.from(byPart.values()).sort((a, b) =>
+              String(a.Category).localeCompare(String(b.Category))
+              || String(a["Part Number"]).localeCompare(String(b["Part Number"])),
+            );
           },
         });
       };

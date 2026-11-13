@@ -57,7 +57,14 @@ const InspectionApproval = () => {
       asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
       branch_name: translateMasterDataLabel(item.branch_name, t),
       raw_pl_sch_date: item.pl_sch_date,
-      pl_sch_date: item.pl_sch_date ? new Date(item.pl_sch_date).toLocaleDateString() : '-',
+      pl_sch_date: item.pl_sch_date
+        ? (/^\d{4}-\d{2}-\d{2}$/.test(String(item.pl_sch_date).trim())
+            ? (() => {
+                const [y, m, d] = String(item.pl_sch_date).trim().split('-').map(Number);
+                return new Date(y, m - 1, d).toLocaleDateString();
+              })()
+            : new Date(item.pl_sch_date).toLocaleDateString(undefined, { timeZone: 'Asia/Kolkata' }))
+        : '-',
       header_status: item.header_status || 'PN',
     })),
     [approvals, t],

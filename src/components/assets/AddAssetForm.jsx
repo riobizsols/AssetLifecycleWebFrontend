@@ -130,7 +130,12 @@ const AddAssetForm = ({ userRole }) => {
   const toVendorOptions = (data) => [
     { value: '', label: 'Select' },
     ...(Array.isArray(data) ? data : [])
-      .filter((v) => v && (v.int_status === 1 || v.int_status == null))
+      .filter((v) => {
+        if (!v) return false;
+        // Accept active vendors even if API/cache returns int_status as string.
+        if (v.int_status == null || v.int_status === '') return true;
+        return Number(v.int_status) === 1;
+      })
       .map((vendor) => ({
         value: vendor.vendor_id,
         label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`,

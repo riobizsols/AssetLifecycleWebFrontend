@@ -123,12 +123,20 @@ const AddAssetType = () => {
       console.log('Properties response:', res.data);
 
       if (res.data && res.data.success && Array.isArray(res.data.data)) { 
-        // Transform API data to dropdown format
-        const props = res.data.data.map(prop => ({
-          id: prop.prop_id,
-          text: prop.property,
-          value: prop.prop_id
-        }));
+        // Transform API data to dropdown format (dedupe duplicate labels)
+        const seen = new Set();
+        const props = [];
+        for (const prop of res.data.data) {
+          const text = String(prop.property || '').trim();
+          const key = text.toLowerCase();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          props.push({
+            id: prop.prop_id,
+            text,
+            value: prop.prop_id
+          });
+        }
         setProperties(props);
         console.log('Properties loaded:', props);
       } else {

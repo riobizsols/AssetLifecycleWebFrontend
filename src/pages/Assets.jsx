@@ -160,7 +160,10 @@ const Assets = () => {
           loadAll: fullList,
           serverFilters: apiFilters,
           revalidate: true,
-          onFresh: (result) => applyListResult(result, fullList),
+          onFresh: (result) => {
+            if (result?._superseded) return;
+            applyListResult(result, fullList);
+          },
         });
       } catch (err) {
         console.error('Background asset refresh failed', err);
@@ -183,6 +186,7 @@ const Assets = () => {
         serverFilters: apiFilters,
         force,
       });
+      if (result?._superseded) return;
       applyListResult(result, fullList);
     } catch (err) {
       console.error('Failed to fetch assets', err);
@@ -196,6 +200,14 @@ const Assets = () => {
       setIsLoading(false);
     }
   }, [PAGE_SIZE, applyListResult, fetchAssetsList, getCachedAssetsList, t]);
+
+  const removeAssetsFromList = useCallback((assetIds) => {
+    const idSet = new Set((assetIds || []).filter(Boolean));
+    if (!idSet.size) return;
+    setData((prev) => prev.filter((row) => !idSet.has(row.asset_id)));
+    setSelectedRows((prev) => prev.filter((id) => !idSet.has(id)));
+    setTotalCount((prev) => Math.max(0, (prev || 0) - idSet.size));
+  }, []);
 
   const refreshAssets = useCallback(() => {
     invalidateAssetsCache();
@@ -280,21 +292,23 @@ const Assets = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASESELECTASSETS_59BE7698', fallbackText: t('assets.pleaseSelectAssets'), type: 'error' });
       return false;
     }
-    
+
+    const deletedIds = [...selectedRows];
     try {
-      await API.post("/assets/delete", { asset_ids: selectedRows });
+      await API.post("/assets/delete", { asset_ids: deletedIds });
+      removeAssetsFromList(deletedIds);
       showBackendTextToast({
         toast,
         tmdId: 'TMD_I18N_ASSETS_ASSETSDELETEDSUCCESSFULLY_1180A8F2',
-        fallbackText: t('assets.assetsDeletedSuccessfully', { count: selectedRows.length }),
+        fallbackText: t('assets.assetsDeletedSuccessfully', { count: deletedIds.length }),
         type: 'success',
-        values: { count: selectedRows.length },
+        values: { count: deletedIds.length },
       });
       
       // Log bulk delete action
       await recordActionByNameWithFetch('Delete', { 
-        count: selectedRows.length,
-        assetIds: selectedRows 
+        count: deletedIds.length,
+        assetIds: deletedIds 
       });
       
       setSelectedRows([]);
@@ -328,6 +342,7 @@ const Assets = () => {
   const handleDelete = async (row) => {
     try {
       await API.delete(`/assets/${row.asset_id}`);
+      removeAssetsFromList([row.asset_id]);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETDELETEDSUCCESSFULLY_473B7DFF', fallbackText: t('assets.assetDeletedSuccessfully'), type: 'success' });
       
       // Log delete action
@@ -360,6 +375,7 @@ const Assets = () => {
       // Single asset delete
       try {
         await API.delete(`/assets/${selectedAsset.asset_id}`);
+        removeAssetsFromList([selectedAsset.asset_id]);
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETDELETEDSUCCESSFULLY_473B7DFF', fallbackText: t('assets.assetDeletedSuccessfully'), type: 'success' });
         
         // Log delete action only when confirmed

@@ -61,6 +61,11 @@ const parseAssetsResponse = (resData) => {
   };
 };
 
+const attachSuperseded = (data, superseded) => {
+  if (!superseded || data == null || typeof data !== 'object') return data;
+  return { ...data, _superseded: true };
+};
+
 export const useAssetsStore = create((set, get) => ({
   currentPage: 1,
   filterValues: { columnFilters: [], fromDate: '', toDate: '' },
@@ -117,19 +122,19 @@ export const useAssetsStore = create((set, get) => ({
     };
 
     if (revalidate && !force) {
-      const { data } = await fetchWithRevalidate(cacheKey, fetcher, {
+      const { data, superseded } = await fetchWithRevalidate(cacheKey, fetcher, {
         ttlMs: ASSETS_TTL_MS,
         onFresh,
       });
-      return data;
+      return attachSuperseded(data, superseded);
     }
 
-    const { data } = await fetchWithCache(cacheKey, fetcher, {
+    const { data, superseded } = await fetchWithCache(cacheKey, fetcher, {
       ttlMs: ASSETS_TTL_MS,
       force,
     });
 
-    return data;
+    return attachSuperseded(data, superseded);
   },
 
   fetchExistingAssets: async ({ force = false, revalidate = false, onFresh } = {}) => {
