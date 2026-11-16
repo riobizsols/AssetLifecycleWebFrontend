@@ -32,6 +32,8 @@ const spareAlertTypeLabel = (alertType) => {
 
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
+  "CBM Maintenance": "bg-cyan-100 text-cyan-800",
+  "Condition Based Maintenance": "bg-cyan-100 text-cyan-800",
   "Inspection": "bg-green-100 text-green-800",
   "Vendor Contract Renewal": "bg-orange-100 text-orange-800",
   "Warranty Expiry": "bg-amber-100 text-amber-800",
@@ -43,6 +45,15 @@ const badgeColors = {
   "Out of stock": "bg-rose-100 text-rose-800",
   "Needs purchase": "bg-amber-100 text-amber-800",
   Urgent: "bg-red-100 text-red-800",
+};
+
+const resolveBadgeClass = (alertType) => {
+  if (badgeColors[alertType]) return badgeColors[alertType];
+  const lower = String(alertType || "").toLowerCase();
+  if (lower.includes("cbm") || lower.includes("condition based")) {
+    return badgeColors["Condition Based Maintenance"];
+  }
+  return "bg-blue-100 text-blue-800";
 };
 
 const NotificationsPanel = () => {
@@ -233,7 +244,7 @@ const NotificationsPanel = () => {
                 {(alert.isUrgent || isSpareAlert(alert)) && (
                   <ExclamationTriangleIcon className="w-5 h-5 text-red-500 mr-1" />
                 )}
-                <span className={`text-xs font-bold px-2 py-1 rounded ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
+                <span className={`text-xs font-bold px-2 py-1 rounded ${resolveBadgeClass(alert.alertType)}`}>
                   {spareAlertTypeLabel(alert.alertType)}
                 </span>
                 {alert.isGroupMaintenance && (

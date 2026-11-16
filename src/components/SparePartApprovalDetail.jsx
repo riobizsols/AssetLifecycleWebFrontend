@@ -39,7 +39,9 @@ export default function SparePartApprovalDetail() {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [rejected, setRejected] = useState(false);
 
   const [assetName, setAssetName] = useState('');
   const [assetType, setAssetType] = useState('');
@@ -67,6 +69,7 @@ export default function SparePartApprovalDetail() {
       });
       setDetail(data);
       setApproved(Boolean(data?.is_approved));
+      setRejected(String(data?.status || '').toUpperCase() === 'RJ');
       setAssetName(data?.asset_name || data?.asset_description || data?.serial_number || '');
       setAssetType(data?.asset_type_name || '');
       setCategory(data?.category_name || '');
@@ -98,9 +101,11 @@ export default function SparePartApprovalDetail() {
 
   const isLocked =
     approved ||
+    rejected ||
     Boolean(detail?.is_approved) ||
     detail?.status === 'IS' ||
-    detail?.status === 'IE';
+    detail?.status === 'IE' ||
+    detail?.status === 'RJ';
 
   useEffect(() => {
     let cancelled = false;
@@ -272,8 +277,29 @@ export default function SparePartApprovalDetail() {
     setModels([]);
   };
 
+  const handleReject = async () => {
+    if (approved || rejected || rejecting || detail?.is_approved || detail?.status === 'RJ') return;
+    setRejecting(true);
+    try {
+      await API.post(`/spare-parts/issue-approvals/${id}/reject`, {});
+      setRejected(true);
+      toast.success(t('sparePartApproval.rejectedSuccessfully') || 'Spare part request rejected');
+      useSparePartApprovalStore.getState().invalidateApprovalCache();
+      useSparePartListStore.getState().invalidateListCache();
+      navigate('/spare-part-approval');
+    } catch (err) {
+      toast.error(
+        err.response?.data?.error ||
+          t('sparePartApproval.rejectFailed') ||
+          'Failed to reject spare part request',
+      );
+    } finally {
+      setRejecting(false);
+    }
+  };
+
   const handleApprove = async () => {
-    if (approved || approving || detail?.is_approved) return;
+    if (approved || rejected || approving || detail?.is_approved) return;
     if (!assetName.trim()) {
       toast.error(t('sparePartApproval.assetNameRequired'));
       return;
@@ -503,17 +529,31 @@ export default function SparePartApprovalDetail() {
           >
             {t('common.cancel')}
           </button>
+          {!isLocked && (
+            <button
+              type="button"
+              onClick={handleReject}
+              disabled={rejecting || approving}
+              className="px-4 py-2 rounded-md text-white bg-rose-600 hover:bg-rose-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {rejecting
+                ? t('common.saving')
+                : t('sparePartApproval.reject') || 'Reject'}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleApprove}
-            disabled={isApproveDisabled}
+            disabled={isApproveDisabled || rejected}
             className="px-4 py-2 rounded-md text-white bg-[#0E2F4B] hover:bg-[#14395c] disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {approved || detail?.is_approved
-              ? t('sparePartApproval.reserved')
-              : approving
-                ? t('common.saving')
-                : t('sparePartApproval.reserve')}
+            {rejected || detail?.status === 'RJ'
+              ? t('sparePartApproval.rejected') || 'Rejected'
+              : approved || detail?.is_approved
+                ? t('sparePartApproval.reserved')
+                : approving
+                  ? t('common.saving')
+                  : t('sparePartApproval.reserve')}
           </button>
         </div>
       </div>

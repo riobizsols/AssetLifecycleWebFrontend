@@ -1409,7 +1409,16 @@ export default function MaintSupervisorApproval() {
       }
     } catch (err) {
       console.error("Failed to update maintenance schedule:", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPDATEMAINTENANCE_1A285ADA', fallbackText: t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'), type: 'error' });
+      const backendMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        null;
+      showBackendTextToast({
+        toast,
+        tmdId: backendMsg ? undefined : 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPDATEMAINTENANCE_1A285ADA',
+        fallbackText: backendMsg || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'),
+        type: 'error',
+      });
     }
   };
 

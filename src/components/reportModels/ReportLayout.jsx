@@ -302,21 +302,18 @@ export default function ReportLayout({
           ? filterOptions.departments
           : (filterOptions.department_options && Array.isArray(filterOptions.department_options) ? filterOptions.department_options : []);
         if (deptList.length > 0) {
-          return deptList
-            .filter(dept => dept && dept.dept_id)
-            .map(dept => {
-              const label = (dept.department_name && String(dept.department_name).trim()) || (dept.text && String(dept.text).trim()) || String(dept.dept_id || 'Unknown Department');
+          const transformed = deptList
+            .filter((dept) => dept && dept.dept_id)
+            .map((dept) => {
+              const label =
+                (dept.department_name && String(dept.department_name).trim()) ||
+                (dept.text && String(dept.text).trim()) ||
+                String(dept.dept_id || 'Unknown Department');
               return { value: dept.dept_id, label };
-          
-        console.warn('⚠️ [ReportLayout] No departments found in filterOptions');
-          console.log(`🔍 [ReportLayout] Transformed ${transformed.length} departments for dropdown`);
-          if (transformed.length > 0) {
-            console.log(`🔍 [ReportLayout] Sample departments:`, transformed.slice(0, 3));
-          }
-          return transformed;
             });
+          return transformed.length > 0 ? transformed : null;
         }
-        return [];
+        return null;
       }
       case 'vendor':
         return filterOptions.vendors || [];
@@ -327,34 +324,40 @@ export default function ReportLayout({
       case 'vendorId':
         return filterOptions.vendor_options || [];
       case 'assetId':
-      case 'assets':
-        if (Array.isArray(filterOptions.asset_options) && !filterOptions.assets) {
-          return filterOptions.asset_options;
+      case 'assets': {
+        if (Array.isArray(filterOptions.asset_options) && filterOptions.asset_options.length > 0 && !filterOptions.assets) {
+          // asset_options may already be {value,label} or raw asset rows
+          const first = filterOptions.asset_options[0];
+          if (first && (first.value || first.label)) return filterOptions.asset_options;
+          return filterOptions.asset_options.map((asset) => ({
+            value: asset.asset_id || asset.value,
+            label: `${asset.asset_id || asset.value} - ${asset.description || asset.asset_name || asset.asset_description || asset.serial_number || asset.asset_id || 'Unknown Asset'}`,
+          }));
         }
         // Transform assets to dropdown format: {value: asset_id, label: asset_id - asset_name}
-        // Use description for asset name (not text which is asset type name)
-        if (filterOptions.assets && Array.isArray(filterOptions.assets)) {
-          return filterOptions.assets.map(asset => ({
+        if (filterOptions.assets && Array.isArray(filterOptions.assets) && filterOptions.assets.length > 0) {
+          return filterOptions.assets.map((asset) => ({
             value: asset.asset_id,
-            label: `${asset.asset_id} - ${asset.description || asset.asset_name || asset.asset_description || asset.asset_id || 'Unknown Asset'}`
+            label: `${asset.asset_id} - ${asset.description || asset.asset_name || asset.asset_description || asset.serial_number || asset.asset_id || 'Unknown Asset'}`,
           }));
         }
-        return [];
+        return null;
+      }
       case 'assetType': {
         // Prefer assetTypes (asset-register style), then asset_type_options (breakdown)
-        if (filterOptions.assetTypes && Array.isArray(filterOptions.assetTypes)) {
-          return filterOptions.assetTypes.map(at => ({
+        if (filterOptions.assetTypes && Array.isArray(filterOptions.assetTypes) && filterOptions.assetTypes.length > 0) {
+          return filterOptions.assetTypes.map((at) => ({
             value: at.asset_type_id,
-            label: at.text || at.asset_type_name || at.asset_type_id || 'Unknown Asset Type'
+            label: at.text || at.asset_type_name || at.asset_type_id || 'Unknown Asset Type',
           }));
         }
-        if (filterOptions.asset_type_options && Array.isArray(filterOptions.asset_type_options)) {
-          return filterOptions.asset_type_options.map(at => ({
+        if (filterOptions.asset_type_options && Array.isArray(filterOptions.asset_type_options) && filterOptions.asset_type_options.length > 0) {
+          return filterOptions.asset_type_options.map((at) => ({
             value: at.asset_type_id,
-            label: at.asset_type_name || at.text || at.asset_type_id || 'Unknown Asset Type'
+            label: at.asset_type_name || at.text || at.asset_type_id || 'Unknown Asset Type',
           }));
         }
-        return [];
+        return null;
       }
       case 'branch':
         // Transform branches to dropdown format: {value: branch_id, label: branch_name}

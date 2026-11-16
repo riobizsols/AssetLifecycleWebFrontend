@@ -121,9 +121,17 @@ function transformNotifications(notifications) {
       alertType = 'Out of stock';
     } else if (notification.workflowType === 'STOCK_NEEDS_PURCHASE') {
       alertType = 'Needs purchase';
+    } else if (notification.isCbm || notification.source === 'cbm') {
+      alertType = notification.maintenanceType || 'Condition Based Maintenance';
     } else if (notification.maintenanceType) {
       alertType = notification.maintenanceType;
     }
+
+    const isCbm =
+      !!notification.isCbm ||
+      notification.source === 'cbm' ||
+      String(alertType || '').toLowerCase().includes('cbm') ||
+      String(alertType || '').toLowerCase().includes('condition based');
 
     let alertText = '';
     if (alertType === 'Inspection') {
@@ -149,6 +157,8 @@ function transformNotifications(notifications) {
       alertText = `${notification.assetTypeName}`;
     } else if (notification.isGroupMaintenance && notification.groupName) {
       alertText = `${notification.groupName} (${notification.groupAssetCount} assets)`;
+    } else if (isCbm) {
+      alertText = `${notification.assetId || notification.assetTypeName || 'Asset'} — condition based maintenance needs approval`;
     } else {
       alertText = `${notification.assetTypeName} Maintenance`;
     }
@@ -156,6 +166,8 @@ function transformNotifications(notifications) {
     return {
       alertType,
       alertText,
+      isCbm,
+      source: notification.source || (isCbm ? 'cbm' : undefined),
       dueOn: formatNotificationDate(notification.dueDate),
       actionBy:
         notification.workflowType === 'CONSUMPTION_MISS'

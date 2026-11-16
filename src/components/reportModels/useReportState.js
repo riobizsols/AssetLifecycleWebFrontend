@@ -971,7 +971,12 @@ export function useReportState(reportId, report) {
           (reopenedData || []).map((record) => ({
             "AMS ID": record.ams_id || "N/A",
             "Asset ID": record.asset_id || "N/A",
-            "Asset Name": record.asset_name || record.asset_description || "N/A",
+            "Asset Name":
+              record.asset_name ||
+              record.asset_description ||
+              record.serial_number ||
+              record.asset_id ||
+              "N/A",
             "Serial Number": record.serial_number || "N/A",
             "Asset Type": record.asset_type_name || "N/A",
             "Reopen Count (RO)": record.ro_count ?? 0,

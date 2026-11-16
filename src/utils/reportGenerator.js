@@ -64,10 +64,13 @@ export const generateComprehensiveReport = ({ report, filteredRows, quick, advan
   const detailedData = generateDetailedData(filteredRows, columns || report.defaultColumns);
 
   return {
+    report,
     header: reportHeader,
     filters: appliedFilters,
     summary: resultsSummary,
     data: detailedData,
+    // Honor user-selected Add/Remove columns for PDF/CSV downloads
+    selectedColumns: columns || report.defaultColumns || [],
     metadata: {
       generatedAt: now.toISOString(),
       version: '1.0',
@@ -302,66 +305,26 @@ const generateDetailedData = (filteredRows, columns) => {
 };
 
 /**
- * Select important columns for PDF export
+ * Resolve PDF/CSV table columns from user-selected columns.
+ * Falls back to all headers when selection is missing.
  */
-const selectImportantColumns = (allHeaders, reportData) => {
-  console.log('🔍 [selectImportantColumns] Input:', { allHeaders: allHeaders.length, reportData });
-  
-  const { report } = reportData;
-  
-  // Check if report exists
-  if (!report || !report.id) {
-    console.log('❌ [selectImportantColumns] No report or report.id found, using first 6 columns');
-    return allHeaders.slice(0, 6);
+const resolveExportColumns = (allHeaders, reportData) => {
+  const selected = Array.isArray(reportData?.selectedColumns)
+    ? reportData.selectedColumns
+    : Array.isArray(reportData?.data?.headers)
+      ? reportData.data.headers.map((h) => h.label || h.key)
+      : [];
+
+  if (selected.length > 0) {
+    const byLabel = new Map(allHeaders.map((h) => [h.label, h]));
+    const byKey = new Map(allHeaders.map((h) => [h.key, h]));
+    const matched = selected
+      .map((col) => byLabel.get(col) || byKey.get(col) || null)
+      .filter(Boolean);
+    if (matched.length > 0) return matched;
   }
-  
-  console.log('📊 [selectImportantColumns] Report ID:', report.id);
-  
-  // Define priority columns based on report type
-  const priorityColumns = {
-    'asset-register': [
-      'Asset ID', 'Asset Name', 'Department', 'Assigned Employee', 
-      'Current Status', 'Cost', 'Purchase Date'
-    ],
-    'asset-valuation': [
-      'Asset Code', 'Name', 'Asset Status', 'Current Value', 
-      'Original Cost', 'Net Book Value', 'Department'
-    ],
-    'maintenance-history': [
-      'Work Order ID', 'Asset ID', 'Asset Name', 'Maintenance Start Date', 
-      'Vendor Name', 'Work Order Status', 'Cost (₹)'
-    ],
-    'asset-workflow-history': [
-      'Work Order ID', 'Asset ID', 'Asset Name', 'Workflow Step', 
-      'Work Order Status', 'Assigned To', 'Priority'
-    ],
-    'breakdown-history': [
-      'Work Order ID', 'Asset ID', 'Asset Name', 'Breakdown Date', 
-      'Reported By', 'Priority', 'Resolution Time (h)'
-    ]
-  };
-  
-  // Get priority columns for this report type
-  const reportPriority = priorityColumns[report.id] || [];
-  console.log('📊 [selectImportantColumns] Priority columns for', report.id, ':', reportPriority);
-  
-  // Filter headers to include only priority columns
-  const importantHeaders = allHeaders.filter(header => 
-    reportPriority.includes(header.label)
-  );
-  
-  console.log('📊 [selectImportantColumns] Important headers found:', importantHeaders.length);
-  
-  // If no priority columns found, take first 6 columns
-  if (importantHeaders.length === 0) {
-    console.log('⚠️ [selectImportantColumns] No priority columns found, using first 6 columns');
-    return allHeaders.slice(0, 6);
-  }
-  
-  // Limit to maximum 7 columns for better PDF layout
-  const result = importantHeaders.slice(0, 7);
-  console.log('✅ [selectImportantColumns] Final result:', result.length, 'columns');
-  return result;
+
+  return allHeaders;
 };
 
 /**
@@ -557,17 +520,15 @@ export const exportReportToPDF = (reportData) => {
         doc.setFont('helvetica', 'bold');
         yPosition = addText('DETAILED DATA', 20, yPosition);
         
-        // Select only important columns for PDF
-        const importantColumns = selectImportantColumns(data.headers, reportData);
+        // Use exact Add/Remove column selection (do not drop user-added columns)
+        const exportColumns = resolveExportColumns(data.headers, reportData);
         
-        // Prepare table data with only important columns
-        const tableHeaders = importantColumns.map(h => h.label);
+        const tableHeaders = exportColumns.map(h => h.label);
         const tableRows = data.rows.map(row => 
-          importantColumns.map(header => String(row[header.key] || ''))
+          exportColumns.map(header => String(row[header.key] || ''))
         );
         
-        // Calculate column widths based on content
-        const columnWidths = calculateColumnWidths(importantColumns, tableRows);
+        const columnWidths = calculateColumnWidths(exportColumns, tableRows);
         
         // Add table
         autoTable(doc, {

@@ -39,7 +39,9 @@ const ReportsBreakdown = () => {
   const isReadOnly = accessLevel === "D";
 
   const columns = useMemo(() => [
-    { label: t("breakdownDetails.reportedBy"), name: "reported_by", visible: true },
+    { label: t("breakdownDetails.assetId") || "Asset ID", name: "asset_id", visible: true },
+    { label: t("breakdownDetails.assetName") || "Asset Name", name: "asset_name", visible: true },
+    { label: t("breakdownDetails.reportedBy"), name: "reported_by_name", visible: true },
     { label: t("breakdownDetails.status"), name: "status", visible: true },
     { label: t("breakdownDetails.description"), name: "description", visible: true },
   ], [t]);

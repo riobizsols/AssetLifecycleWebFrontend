@@ -79,7 +79,6 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'slow', label: 'Slow & Non-moving' },
   { id: 'consumption', label: 'Spare Consumption' },
-  { id: 'equipment', label: 'Equipment-wise' },
   { id: 'hold', label: 'Hold duration' },
 ];
 
@@ -452,9 +451,13 @@ export default function SparePartManagement() {
   const needsIdleFilter = reportType === 'slow' || reportType === 'overview';
   const needsDateFilter =
     reportType === 'consumption' ||
-    reportType === 'equipment' ||
     reportType === 'hold' ||
     reportType === 'overview';
+
+  const openSlowWithFsn = (fsn) => {
+    setActiveTab('slow');
+    setFsnFilter(fsn || 'all');
+  };
 
   const canView = Boolean(reportType) &&
     (datePeriod !== 'specific' || (dateFrom && dateTo));
@@ -612,11 +615,9 @@ export default function SparePartManagement() {
       ? slowColumns
       : activeTab === 'consumption'
         ? consumptionColumns
-        : activeTab === 'equipment'
-          ? equipmentColumns
-          : activeTab === 'hold'
-            ? holdColumns
-            : [];
+        : activeTab === 'hold'
+          ? holdColumns
+          : [];
 
   useEffect(() => {
     setCols(activeColumns.map((c) => c.name));
@@ -645,11 +646,9 @@ export default function SparePartManagement() {
       ? slowRows
       : activeTab === 'consumption'
         ? consumptionRows
-        : activeTab === 'equipment'
-          ? equipmentRows
-          : activeTab === 'hold'
-            ? holdRows
-            : [];
+        : activeTab === 'hold'
+          ? holdRows
+          : [];
 
   const scopedRows = useMemo(
     () => applyAdvancedConditions(activeRows, advanced),
@@ -817,9 +816,7 @@ export default function SparePartManagement() {
           ? slowColumns
           : tab === 'consumption'
             ? consumptionColumns
-            : tab === 'equipment'
-              ? equipmentColumns
-              : holdColumns;
+            : holdColumns;
       let source = loaded[tab] || [];
       if (tab === 'slow' && fsnFilter !== 'all') {
         source = source.filter((r) => r.fsn_class === fsnFilter);
@@ -1173,31 +1170,49 @@ export default function SparePartManagement() {
                   label="Non-moving / dead"
                   value={fmtNum(slowData.summary?.nonMoving)}
                   hint={`${fmtNum(slowData.summary?.deadStock)} dead stock · ${thresholdDays}d`}
-                  onClick={() => setActiveTab('slow')}
+                  onClick={() => openSlowWithFsn('Non-moving')}
                 />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
                   <h3 className="text-sm font-semibold text-slate-800">FSN snapshot</h3>
                   <ul className="mt-3 space-y-2 text-sm">
-                    <li className="flex justify-between">
-                      <span>Fast</span>
-                      <span className="font-medium text-emerald-700">
-                        {fmtNum(slowData.summary?.fast)}
-                      </span>
+                    <li>
+                      <button
+                        type="button"
+                        className="flex w-full justify-between hover:bg-slate-50 rounded px-1 py-0.5"
+                        onClick={() => openSlowWithFsn('Fast')}
+                      >
+                        <span>Fast</span>
+                        <span className="font-medium text-emerald-700">
+                          {fmtNum(slowData.summary?.fast)}
+                        </span>
+                      </button>
                     </li>
-                    <li className="flex justify-between">
-                      <span>Slow</span>
-                      <span className="font-medium text-amber-700">
-                        {fmtNum(slowData.summary?.slow)}
-                      </span>
+                    <li>
+                      <button
+                        type="button"
+                        className="flex w-full justify-between hover:bg-slate-50 rounded px-1 py-0.5"
+                        onClick={() => openSlowWithFsn('Slow')}
+                      >
+                        <span>Slow</span>
+                        <span className="font-medium text-amber-700">
+                          {fmtNum(slowData.summary?.slow)}
+                        </span>
+                      </button>
                     </li>
-                    <li className="flex justify-between">
-                      <span>Non-moving</span>
-                      <span className="font-medium text-rose-700">
-                        {fmtNum(slowData.summary?.nonMoving)}
-                      </span>
+                    <li>
+                      <button
+                        type="button"
+                        className="flex w-full justify-between hover:bg-slate-50 rounded px-1 py-0.5"
+                        onClick={() => openSlowWithFsn('Non-moving')}
+                      >
+                        <span>Non-moving</span>
+                        <span className="font-medium text-rose-700">
+                          {fmtNum(slowData.summary?.nonMoving)}
+                        </span>
+                      </button>
                     </li>
                   </ul>
                 </div>
@@ -1218,23 +1233,6 @@ export default function SparePartManagement() {
                     onClick={() => setActiveTab('consumption')}
                   >
                     View consumption →
-                  </button>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <h3 className="text-sm font-semibold text-slate-800">Equipment usage</h3>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900">
-                    {fmtNum(equipment.summary?.assets)}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    assets · {fmtNum(equipment.summary?.lines)} part lines · qty{' '}
-                    {fmtNum(equipment.summary?.qty)}
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-3 text-sm text-sky-700 hover:underline"
-                    onClick={() => setActiveTab('equipment')}
-                  >
-                    View equipment-wise →
                   </button>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4">

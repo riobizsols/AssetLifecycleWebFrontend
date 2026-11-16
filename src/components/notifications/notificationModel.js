@@ -36,6 +36,7 @@ export const canSnooze = (alert) => ["warranty", "expiry"].includes(notifyKind(a
 
 export const TYPE_META = {
   maintenance: { label: "Maintenance", badge: "bg-blue-50 text-blue-700 ring-blue-600/20", dot: "bg-blue-500" },
+  cbm: { label: "Condition Based Maintenance", badge: "bg-cyan-50 text-cyan-800 ring-cyan-600/20", dot: "bg-cyan-500" },
   inspection: { label: "Inspection", badge: "bg-green-50 text-green-700 ring-green-600/20", dot: "bg-green-500" },
   vendorRenewal: { label: "Vendor Contract Renewal", badge: "bg-purple-50 text-purple-700 ring-purple-600/20", dot: "bg-purple-500" },
   subscriptionRenewal: { label: "Subscription Renewal", badge: "bg-orange-50 text-orange-700 ring-orange-600/20", dot: "bg-orange-500" },
@@ -49,7 +50,7 @@ export const TYPE_META = {
 };
 
 export const CATEGORIES = [
-  { id: "maintenance", label: "Maintenance & Inspection", icon: WrenchScrewdriverIcon, accent: "text-blue-600 bg-blue-50", types: ["maintenance", "inspection"] },
+  { id: "maintenance", label: "Maintenance & Inspection", icon: WrenchScrewdriverIcon, accent: "text-blue-600 bg-blue-50", types: ["maintenance", "cbm", "inspection"] },
   { id: "renewals", label: "Contracts & Renewals", icon: DocumentTextIcon, accent: "text-purple-600 bg-purple-50", types: ["vendorRenewal", "subscriptionRenewal"] },
   { id: "expiry", label: "Warranty & Expiry", icon: ShieldExclamationIcon, accent: "text-amber-600 bg-amber-50", types: ["warranty", "assetExpiry"] },
   { id: "spares", label: "Spare Parts", icon: CubeIcon, accent: "text-violet-600 bg-violet-50", types: ["spareApproval", "spareIssued", "spareConfirmed"] },
@@ -60,6 +61,12 @@ export const CATEGORIES = [
 export const ALL_TYPES = CATEGORIES.flatMap((c) => c.types);
 
 export const categoryOfType = (type) => CATEGORIES.find((c) => c.types.includes(type)) || CATEGORIES[0];
+
+const isCbmNotification = (n) => {
+  if (n?.isCbm || n?.source === "cbm") return true;
+  const typeText = String(n?.alertType || n?.maintenanceType || "").toLowerCase();
+  return typeText.includes("cbm") || typeText.includes("condition based");
+};
 
 export const getNotificationType = (alert) => {
   if (alert.workflowType === "INSPECTION" || alert.alertType === "Inspection") return "inspection";
@@ -75,6 +82,7 @@ export const getNotificationType = (alert) => {
   const bodyText = String(alert.alertText || "").toLowerCase();
   if (typeText.includes("subscription") || bodyText.includes("subscription")) return "subscriptionRenewal";
   if (typeText.includes("renewal") || bodyText.includes("renewal") || bodyText.includes("contract")) return "vendorRenewal";
+  if (isCbmNotification(alert)) return "cbm";
   return "maintenance";
 };
 
@@ -108,6 +116,7 @@ const workflowAlertType = (n, t) => {
   if (n.workflowType === "CONSUMPTION_MISS") return "Consumption Miss Alert";
   if (n.workflowType === "STOCK_OUT_OF_STOCK") return "Out of stock";
   if (n.workflowType === "STOCK_NEEDS_PURCHASE") return "Needs purchase";
+  if (isCbmNotification(n)) return n.maintenanceType || "Condition Based Maintenance";
   return n.maintenanceType || "Regular Maintenance";
 };
 
@@ -124,6 +133,10 @@ const workflowAlertText = (n, t) => {
   }
   if (isStockAlert(n)) return n.body || `${n.assetTypeName || n.categoryName || "-"}`;
   if (String(n.maintenanceType || "").toLowerCase().includes("subscription")) return `${n.assetTypeName}`;
+  if (isCbmNotification(n)) {
+    const assetLabel = n.assetId || n.assetTypeName || "Asset";
+    return `${assetLabel} — condition based maintenance needs approval`;
+  }
   return t("allNotifications.assetTypeMaintenance", { assetType: n.assetTypeName });
 };
 
@@ -160,6 +173,9 @@ export const transformNotification = (n, t, index) => {
     canChangeVendor: !!n.canChangeVendor,
     body: n.body,
     spcId: n.spcId,
+    isCbm: !!n.isCbm || n.source === "cbm",
+    source: n.source || (n.isCbm ? "cbm" : undefined),
+    maintenanceType: n.maintenanceType,
   };
   alert.type = getNotificationType(alert);
   alert.categoryId = categoryOfType(alert.type).id;
