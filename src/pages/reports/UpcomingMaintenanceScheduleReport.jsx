@@ -81,6 +81,12 @@ export default function UpcomingMaintenanceScheduleReport() {
     };
   }, []);
 
+  // Drop stale totals when period/filters change — must click View report again.
+  useEffect(() => {
+    setReport(null);
+    setStatusFilter('ALL');
+  }, [period, dateFrom, dateTo, selectedAssetTypes]);
+
   const assetTypeOptions = useMemo(
     () =>
       allTypes.map((t) => ({

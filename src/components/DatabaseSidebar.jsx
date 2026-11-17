@@ -629,68 +629,27 @@ function flattenApprovalsGroup(items) {
   return next;
 }
 
-/** Move Reopened Breakdowns from Report Breakdown into the Reports menu group. */
-function moveReopenedBreakdownsToReports(items) {
+/** Hide Reopened Breakdowns from sidebar (product request — menu item removed). */
+function hideReopenedBreakdowns(items) {
   if (!items?.length) return items;
 
   const reopenKey = normalizeNavAppId("REOPENEDBREAKDOWNS");
-  let reopenedItem = null;
 
   const stripReopened = (nodes) =>
     (nodes || [])
       .map((item) => {
         if (isNavGroup(item)) {
-          const children = stripReopened(item.children);
-          const removed = (children || []).find(
-            (child) => normalizeNavAppId(child.app_id) === reopenKey,
-          );
-          if (removed) {
-            reopenedItem = reopenedItem || removed;
-          }
           return {
             ...item,
-            children: (children || []).filter(
-              (child) => normalizeNavAppId(child.app_id) !== reopenKey,
-            ),
+            children: stripReopened(item.children),
           };
         }
-
-        if (normalizeNavAppId(item.app_id) === reopenKey) {
-          reopenedItem = reopenedItem || item;
-          return null;
-        }
-
+        if (normalizeNavAppId(item.app_id) === reopenKey) return null;
         return item;
       })
       .filter(Boolean);
 
-  let result = stripReopened(items);
-  if (!reopenedItem) return result;
-
-  const reportsGroup = findNavGroupByLabel(result, "Reports");
-  if (!reportsGroup) {
-    return [...result, { ...reopenedItem, is_group: false, children: undefined }];
-  }
-
-  const alreadyInReports = (reportsGroup.children || []).some(
-    (child) => normalizeNavAppId(child.app_id) === reopenKey,
-  );
-  if (alreadyInReports) return result;
-
-  result = result.map((item) => {
-    if (!isNavGroup(item) || canonicalGroupLabel(item.label) !== "reports") {
-      return item;
-    }
-    return {
-      ...item,
-      children: [
-        ...(item.children || []),
-        { ...reopenedItem, is_group: false, children: undefined },
-      ],
-    };
-  });
-
-  return result;
+  return stripReopened(items);
 }
 
 /** Move Spare Part consumption report from Spare Parts into the Reports menu group. */
@@ -1295,7 +1254,7 @@ function finalizeSidebarNavigation(items) {
   tree = reorganizeSidebarGroups(tree);
   tree = repairOrphanedNavGroups(tree);
   tree = flattenApprovalsGroup(tree);
-  tree = moveReopenedBreakdownsToReports(tree);
+  tree = hideReopenedBreakdowns(tree);
   tree = moveSparePartsMenusToGroup(tree);
   tree = moveSparePartConsumptionReportToReports(tree);
   tree = ensureSparePartManagementMenu(tree);
