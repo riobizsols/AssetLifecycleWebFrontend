@@ -335,8 +335,8 @@ const AllNotifications = () => {
       const next = new Set(prev);
       const allOn = items.every((a) => next.has(a.key));
       items.forEach((a) => (allOn ? next.delete(a.key) : next.add(a.key)));
-      return next;
-    });
+            return next;
+          });
 
   // ---- Actions ----
   const removeAlerts = (keys) => {
@@ -347,7 +347,7 @@ const AllNotifications = () => {
 
   const markAlertsRead = (keys) => {
     const keySet = new Set(keys);
-    setAlerts((prev) =>
+        setAlerts((prev) =>
       prev.map((a) => (keySet.has(a.key) ? { ...a, notificationStatus: "OPEN", isUnread: false } : a)),
     );
   };
@@ -365,9 +365,9 @@ const AllNotifications = () => {
       );
     } finally {
       setPendingNotifyIds((prev) => {
-        const next = { ...prev };
+              const next = { ...prev };
         delete next[alert.key];
-        return next;
+              return next;
       });
     }
   };
@@ -528,8 +528,8 @@ const AllNotifications = () => {
 
     return (
       <div className="relative" data-menu-root onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
+          <button
+            type="button"
           aria-label={t("allNotifications.actions")}
           onClick={() => {
             setOpenMenuKey(menuOpen ? null : alert.key);
@@ -538,7 +538,7 @@ const AllNotifications = () => {
           className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
         >
           <EllipsisVerticalIcon className="h-5 w-5" />
-        </button>
+          </button>
         {menuOpen && (
           <div className="absolute right-0 z-30 mt-1 w-60 space-y-0.5 rounded-lg border border-gray-200 bg-white p-1.5 shadow-xl">
             {!hasNotifyActions && (
@@ -553,13 +553,13 @@ const AllNotifications = () => {
             )}
             {hasNotifyActions && (
               <>
-                <button
+            <button
                   type="button"
                   className={`${itemCls} text-green-700 hover:bg-green-50`}
                   onClick={() => { setOpenMenuKey(null); goToAssetEdit(alert, kind === "expiry" ? "expiry" : "warranty"); }}
                 >
                   <CalendarIcon className="h-4 w-4" /> {tx("allNotifications.extendExpiry", "Extend Expiry")}
-                </button>
+            </button>
                 <button
                   type="button"
                   className={`${itemCls} text-blue-700 hover:bg-blue-50`}
@@ -613,9 +613,9 @@ const AllNotifications = () => {
                 <TrashIcon className="h-4 w-4" /> {t("allNotifications.discard")}
               </button>
             )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
     );
   };
 
@@ -655,19 +655,19 @@ const AllNotifications = () => {
           <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${meta.badge}`}>
               {typeLabel(alert)}
-            </span>
+                  </span>
             {alert.isGroupMaintenance && (
               <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
                 {t("allNotifications.groupMaintenance")}
-              </span>
+                  </span>
             )}
             <span className={`truncate text-sm ${alert.isUnread ? "font-semibold text-gray-900" : "text-gray-800"}`}>
               {alert.alertText}
-            </span>
+                  </span>
             {alert.isUnread && (
               <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                 {tx("allNotifications.new", "New")}
-              </span>
+                  </span>
             )}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-500">
@@ -677,11 +677,11 @@ const AllNotifications = () => {
             <span className="flex items-center gap-1">
               <CalendarIcon className="h-4 w-4" />
               {t("allNotifications.dueOn")}: <b className="font-medium text-gray-700">{formatDate(alert.dueDateRaw)}</b>
-            </span>
+                  </span>
             <span className="flex items-center gap-1">
               <UserIcon className="h-4 w-4" />
               {t("allNotifications.actionBy")}: <b className="font-medium text-gray-700">{alert.actionBy}</b>
-            </span>
+                  </span>
             {showCutoff && (
               <span className="flex items-center gap-1">
                 <ClockIcon className={`h-4 w-4 ${alert.priority === "overdue" || alert.priority === "urgent" ? "text-red-500" : ""}`} />
@@ -689,7 +689,7 @@ const AllNotifications = () => {
                 <b className={`font-medium ${alert.priority === "overdue" || alert.priority === "urgent" ? "text-red-600" : "text-gray-700"}`}>
                   {formatDate(alert.cutoffDateRaw)}
                 </b>
-              </span>
+                  </span>
             )}
             {isSpareAlert(alert) && (
               <span>{tx("sparePartApproval.category", "Category")}: <b className="font-medium text-gray-700">{alert.categoryName || "-"}</b></span>
@@ -699,7 +699,7 @@ const AllNotifications = () => {
         <div className="flex flex-shrink-0 items-center gap-1">
           <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${priority.pill}`}>
             {priorityLabel(alert)}
-          </span>
+                  </span>
           {renderRowMenu(alert)}
         </div>
       </div>
@@ -802,7 +802,7 @@ const AllNotifications = () => {
                         <span className={`h-2 w-2 rounded-full ${TYPE_META[type].dot}`} />
                         <span className="flex-1 truncate">{tx(`allNotifications.type_${type}`, TYPE_META[type].label)}</span>
                         <span className="text-xs text-gray-500">{typeCounts[type] || 0}</span>
-                      </label>
+                </label>
                     </li>
                   ))}
                 </ul>
@@ -867,13 +867,13 @@ const AllNotifications = () => {
               <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{kpi.label}</div>
               <div className={`mt-1 text-2xl font-bold ${kpi.cls}`}>{loading ? "–" : kpi.value}</div>
             </button>
-          ))}
-        </div>
+            ))}
+          </div>
 
         <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
           <div className={`${showMobileFilters ? "block" : "hidden"} lg:block`}>
             <div className="lg:sticky lg:top-4">{sidebar}</div>
-          </div>
+            </div>
 
           <section className="min-w-0">
             {/* Toolbar */}
@@ -899,13 +899,13 @@ const AllNotifications = () => {
                   </button>
                 )}
               </div>
-              <button
+                    <button
                 type="button"
                 onClick={() => setShowMobileFilters((v) => !v)}
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 lg:hidden"
               >
                 <AdjustmentsHorizontalIcon className="h-4 w-4" /> {tx("allNotifications.categories", "Categories")}
-              </button>
+                    </button>
               <select value={prefs.priority} onChange={(e) => updatePrefs({ priority: e.target.value })} className={selectCls} aria-label="Priority">
                 <option value="all">{tx("allNotifications.allPriorities", "All priorities")}</option>
                 {Object.entries(PRIORITIES).map(([id, p]) => (
@@ -929,7 +929,7 @@ const AllNotifications = () => {
                 ].map((option) => {
                   const Icon = option.icon;
                   return (
-                    <button
+                        <button
                       key={option.id}
                       type="button"
                       onClick={() => updatePrefs({ view: option.id })}
@@ -937,7 +937,7 @@ const AllNotifications = () => {
                       className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm ${prefs.view === option.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"}`}
                     >
                       <Icon className="h-4 w-4" /> <span className="hidden sm:inline">{option.label}</span>
-                    </button>
+                        </button>
                   );
                 })}
               </div>
@@ -960,7 +960,7 @@ const AllNotifications = () => {
               <div className="flex items-center gap-2 text-xs font-medium">
                 <button type="button" onClick={selectAll} disabled={filtered.length === 0} className="text-blue-600 hover:underline disabled:text-gray-300 disabled:no-underline">
                   {tx("allNotifications.selectAllCount", "Select all ({{count}})", { count: filtered.length })}
-                </button>
+                        </button>
                 <span className="text-gray-300">|</span>
                 <button type="button" onClick={unselectAll} disabled={selectedAlerts.length === 0} className="text-gray-600 hover:underline disabled:text-gray-300 disabled:no-underline">
                   {tx("allNotifications.unselectAll", "Unselect all")}
@@ -969,7 +969,7 @@ const AllNotifications = () => {
 
               {selectedAlerts.length > 0 && (
                 <div className="ml-auto flex flex-wrap items-center gap-2">
-                  <button
+                        <button
                     type="button"
                     onClick={bulkMarkRead}
                     disabled={bulkBusy || bulkEligible.read.length === 0}
@@ -978,9 +978,9 @@ const AllNotifications = () => {
                   >
                     <EnvelopeOpenIcon className="h-4 w-4" />
                     {tx("allNotifications.markAsRead", "Mark as read")} ({bulkEligible.read.length})
-                  </button>
+                        </button>
                   <div className="relative" data-menu-root>
-                    <button
+                            <button
                       type="button"
                       onClick={() => setBulkSnoozeOpen((v) => !v)}
                       disabled={bulkBusy || bulkEligible.snooze.length === 0}
@@ -989,7 +989,7 @@ const AllNotifications = () => {
                     >
                       <BellSnoozeIcon className="h-4 w-4" />
                       {tx("allNotifications.snooze", "Snooze")} ({bulkEligible.snooze.length})
-                    </button>
+                            </button>
                     {bulkSnoozeOpen && (
                       <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-gray-200 bg-white p-2 shadow-xl">
                         <SnoozePicker
@@ -999,10 +999,10 @@ const AllNotifications = () => {
                           onApply={bulkSnooze}
                           applyLabel={tx("allNotifications.snoozeSelected", "Snooze {{count}}", { count: bulkEligible.snooze.length })}
                         />
-                      </div>
-                    )}
+                          </div>
+                        )}
                   </div>
-                  <button
+                        <button
                     type="button"
                     onClick={bulkDiscard}
                     disabled={bulkBusy || bulkEligible.discard.length === 0}
@@ -1011,10 +1011,10 @@ const AllNotifications = () => {
                   >
                     <TrashIcon className="h-4 w-4" />
                     {t("allNotifications.discard")} ({bulkEligible.discard.length})
-                  </button>
+                        </button>
                 </div>
-              )}
-            </div>
+                        )}
+                      </div>
 
             {/* Active filter chips */}
             {activeFilterCount > 0 && (
@@ -1046,7 +1046,7 @@ const AllNotifications = () => {
                 <button type="button" onClick={resetFilters} className="font-medium text-gray-600 hover:text-gray-900 hover:underline">
                   {tx("allNotifications.resetFilters", "Reset all filters")}
                 </button>
-              </div>
+                  </div>
             )}
 
             {error && !loading && (
@@ -1055,14 +1055,14 @@ const AllNotifications = () => {
                 <button type="button" onClick={() => fetchNotifications()} className="font-medium underline">
                   {tx("allNotifications.retry", "Retry")}
                 </button>
-              </div>
-            )}
+                </div>
+              )}
 
             {/* Results */}
             {loading ? (
               <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4">
                 {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-gray-100" />)}
-              </div>
+            </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center rounded-xl border border-gray-200 bg-white py-14 text-center">
                 <div className="mb-4 rounded-full bg-blue-50 p-4"><BellIcon className="h-12 w-12 text-blue-400" /></div>
@@ -1077,7 +1077,7 @@ const AllNotifications = () => {
                     {tx("allNotifications.resetFilters", "Reset all filters")}
                   </button>
                 )}
-              </div>
+        </div>
             ) : prefs.view === "list" ? (
               <div className="rounded-xl border border-gray-200 bg-white">{renderRows(filtered, "list")}</div>
             ) : (
@@ -1128,8 +1128,8 @@ const AllNotifications = () => {
                     </div>
                   );
                 })}
-              </div>
-            )}
+          </div>
+        )}
           </section>
         </div>
       </div>

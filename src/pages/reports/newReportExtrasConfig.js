@@ -1,4 +1,5 @@
 import { formatInr } from '../../pages/reports/consolidatedAssetRegister/utils';
+import { toIstDateInput } from '../../utils/istDate';
 
 /** Column catalog for Consolidated Asset Register (Asset register tab). */
 export const CONSOLIDATED_REGISTER_COLUMNS = {
@@ -127,6 +128,11 @@ export const MAINTENANCE_STATUS_FIELD_ACCESSORS = {
   assetType: (r) => r.asset_type_name || r.asset_type,
 };
 
+function formatReportDate(value) {
+  if (value == null || value === '') return '—';
+  return toIstDateInput(value) || '—';
+}
+
 export function getMaintenanceStatusCellValue(row, column) {
   switch (column) {
     case 'Asset ID':
@@ -140,13 +146,9 @@ export function getMaintenanceStatusCellValue(row, column) {
     case 'Status':
       return row.compliance_status ? String(row.compliance_status).replace(/_/g, ' ') : '—';
     case 'Due Date':
-      return row.act_maint_st_date || row.due_date
-        ? String(row.act_maint_st_date || row.due_date).slice(0, 10)
-        : '—';
+      return formatReportDate(row.act_maint_st_date || row.due_date);
     case 'Completed On':
-      return row.act_main_end_date || row.completed_on
-        ? String(row.act_main_end_date || row.completed_on).slice(0, 10)
-        : '—';
+      return formatReportDate(row.act_main_end_date || row.completed_on);
     case 'Vendor':
       return row.vendor_name ?? '—';
     case 'Work Order':

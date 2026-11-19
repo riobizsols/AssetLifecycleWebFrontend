@@ -20,6 +20,7 @@ import {
   MAINTENANCE_STATUS_COLUMNS,
   MAINTENANCE_STATUS_FIELD_ACCESSORS,
 } from './newReportExtrasConfig';
+import { toIstDateInput } from '../../utils/istDate';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -35,9 +36,8 @@ const STATUS_STYLES = {
 
 function formatDate(value) {
   if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toISOString().slice(0, 10);
+  // IST calendar day — avoid UTC day-shift from toISOString().slice(0, 10)
+  return toIstDateInput(value) || '—';
 }
 
 function statusLabel(value) {

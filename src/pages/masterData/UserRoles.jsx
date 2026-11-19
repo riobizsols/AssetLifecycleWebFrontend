@@ -127,19 +127,18 @@ const Users = () => {
     setShowRoleModal(true);
     setSavingUserInfo(false);
     
-    // Ensure available roles are loaded
-    if (jobRoles.length === 0) {
-      setLoadingAvailableRoles(true);
-      try {
-        await fetchJobRoles();
-      } catch (error) {
-        console.error('Error loading available roles:', error);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOLOADAVAILABLEROLES_35AE4334', fallbackText: t("users.failedToLoadAvailableRoles"), type: 'error' });
-      } finally {
-        setLoadingAvailableRoles(false);
-      }
+    // Always refresh available roles when opening the modal so org switches /
+    // empty caches do not leave "No roles available" after roles exist.
+    setLoadingAvailableRoles(true);
+    try {
+      await useUserRolesStore.getState().fetchJobRoles({ revalidate: true, force: true });
+    } catch (error) {
+      console.error('Error loading available roles:', error);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOLOADAVAILABLEROLES_35AE4334', fallbackText: t("users.failedToLoadAvailableRoles"), type: 'error' });
+    } finally {
+      setLoadingAvailableRoles(false);
     }
-    
+
     await fetchUserRoles(user.user_id);
   };
 
