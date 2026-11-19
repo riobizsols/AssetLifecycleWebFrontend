@@ -28,6 +28,9 @@ export default function SparePartsReport() {
     loading,
     error,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     filterOptions,
     report: updatedReport,
   } = useReportState(selectedReportId, report);
@@ -70,6 +73,9 @@ export default function SparePartsReport() {
       apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

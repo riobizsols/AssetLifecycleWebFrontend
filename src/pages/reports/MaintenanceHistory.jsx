@@ -27,6 +27,9 @@ export default function MaintenanceHistory() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     loading,
     error,
     report: updatedReport,
@@ -140,6 +143,9 @@ export default function MaintenanceHistory() {
       exportFormats={['pdf', 'csv']}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

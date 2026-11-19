@@ -26,6 +26,9 @@ export default function AssetReport() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     filterOptions,
     report: updatedReport,
   } = useReportState(selectedReportId, report);
@@ -66,6 +69,9 @@ export default function AssetReport() {
       apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

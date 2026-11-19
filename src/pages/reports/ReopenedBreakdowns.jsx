@@ -18,6 +18,9 @@ export default function ReopenedBreakdowns() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     report: updatedReport,
     filterOptions,
     loading,
@@ -42,6 +45,9 @@ export default function ReopenedBreakdowns() {
       loading={loading}
       error={error}
       apiData={filterOptions ? { filterOptions } : undefined}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

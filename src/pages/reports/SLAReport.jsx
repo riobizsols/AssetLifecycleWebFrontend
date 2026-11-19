@@ -26,6 +26,9 @@ export default function SLAReport() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     filterOptions,
     report: updatedReport,
   } = useReportState(selectedReportId, report);
@@ -66,6 +69,9 @@ export default function SLAReport() {
       apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

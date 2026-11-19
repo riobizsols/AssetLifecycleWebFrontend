@@ -356,6 +356,14 @@ export default function UpcomingMaintenanceScheduleReport() {
                 type="button"
                 disabled={!canView || loadingView}
                 onClick={handleView}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                disabled={!canView || loadingView}
+                onClick={handleView}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#143d65] text-white hover:bg-[#0f2f4e] disabled:opacity-50"
               >
                 {loadingView ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}

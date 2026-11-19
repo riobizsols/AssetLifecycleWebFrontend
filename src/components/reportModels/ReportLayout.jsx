@@ -62,6 +62,9 @@ export default function ReportLayout({
   hideAdvancedFilters = false,
   hideGenerateReport = false,
   onPreviewReport,
+  onApplyFilters,
+  onClearFilters,
+  onLoadFilters,
   paginate = false,
 }) {
   const { t } = useLanguage();
@@ -531,8 +534,20 @@ export default function ReportLayout({
 
 
   const clearAll = () => {
+    if (onClearFilters) {
+      onClearFilters();
+      return;
+    }
     setQuick({});
     setAdvanced([]);
+  };
+
+  const handleApplyFilters = () => {
+    if (onApplyFilters) {
+      onApplyFilters();
+      return;
+    }
+    // Fallback: filters already live-bound — no-op commit for layouts without hook wiring
   };
 
   const handlePreviewReport = async () => {
@@ -694,8 +709,13 @@ export default function ReportLayout({
   // Load a saved view
   const applyView = (v) => {
     if (!v) return;
-    setQuick(v.quick || {});
-    setAdvanced(v.advanced || []);
+    if (onLoadFilters) {
+      onLoadFilters(v.quick || {}, v.advanced || []);
+    } else {
+      setQuick(v.quick || {});
+      setAdvanced(v.advanced || []);
+      if (onApplyFilters) onApplyFilters();
+    }
     setColumns(v.columns || null);
   };
 
@@ -1150,6 +1170,14 @@ export default function ReportLayout({
                      {t('reports.clear')}
                    </button>
                  )}
+                 <button
+                   type="button"
+                   onClick={handleApplyFilters}
+                   disabled={loading}
+                   className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   {t('reports.apply')}
+                 </button>
                  <button 
                    onClick={onPreviewReport || handlePreviewReport}
                    disabled={loading}

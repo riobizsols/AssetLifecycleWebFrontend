@@ -536,6 +536,7 @@
     "save": "Save",
     "load": "Load",
     "clear": "Clear",
+    "apply": "Apply",
     "preview": "Preview",
     "activeFilters": "Active Filters",
     "none": "None",

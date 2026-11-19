@@ -3,6 +3,9 @@ const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const memoryCache = new Map();
 /** Per-key serial so an older in-flight fetch cannot overwrite a newer one after delete/invalidate. */
 const keySerial = new Map();
+/** Monotonic epoch bumped on every invalidation — screens refetch when their prefix is hit. */
+let cacheEpoch = 0;
+const invalidationListeners = new Set();
 
 function bumpKeySerial(key) {
   const next = (keySerial.get(key) || 0) + 1;
@@ -14,6 +17,29 @@ function bumpKeySerialByPrefix(prefix) {
   for (const key of keySerial.keys()) {
     if (key.startsWith(prefix)) bumpKeySerial(key);
   }
+}
+
+function notifyInvalidation(prefixes = []) {
+  cacheEpoch += 1;
+  const payload = { epoch: cacheEpoch, prefixes: [...prefixes] };
+  invalidationListeners.forEach((listener) => {
+    try {
+      listener(payload);
+    } catch (err) {
+      console.error('[apiCache] invalidation listener failed:', err);
+    }
+  });
+}
+
+/** Subscribe to cache invalidation events (prefix-scoped). Returns unsubscribe. */
+export function subscribeCacheInvalidation(listener) {
+  if (typeof listener !== 'function') return () => {};
+  invalidationListeners.add(listener);
+  return () => invalidationListeners.delete(listener);
+}
+
+export function getCacheEpoch() {
+  return cacheEpoch;
 }
 
 function normalizePath(url = '') {
@@ -57,7 +83,7 @@ export function setCache(key, data) {
   memoryCache.set(key, { data, ts: Date.now() });
 }
 
-export function invalidateCache(prefix) {
+export function invalidateCache(prefix, { silent = false } = {}) {
   for (const key of [...memoryCache.keys()]) {
     if (key.startsWith(prefix)) {
       memoryCache.delete(key);
@@ -65,11 +91,13 @@ export function invalidateCache(prefix) {
   }
   // Invalidate in-flight writers for matching keys even if the entry was already cleared.
   bumpKeySerialByPrefix(prefix);
+  if (!silent) notifyInvalidation([prefix]);
 }
 
 export function clearCache() {
   memoryCache.clear();
   keySerial.clear();
+  notifyInvalidation(['*']);
 }
 
 /** Suffix for list cache keys so ACM org/branch/dept changes don't reuse stale data. */
@@ -88,8 +116,10 @@ function pathHasSegment(path = '', segment = '') {
   return parts.includes(String(segment).toLowerCase());
 }
 
-/** Map API paths to cache key prefixes — avoid clearing the entire app cache on every mutation. */
-function invalidationPrefixesForPath(path = '') {
+/** Map API paths to cache key prefixes — avoid clearing the entire app cache on every mutation.
+ * Exported for automated regression tests of stale-data prefix rules.
+ */
+export function invalidationPrefixesForPath(path = '') {
   const p = String(path).toLowerCase();
   const prefixes = new Set();
 
@@ -109,9 +139,9 @@ function invalidationPrefixesForPath(path = '') {
     add('dept-assets:', 'assignment:');
   }
 
-  // Asset mutations can change group membership / counts on group screens.
+  // Asset mutations can change group membership / counts on group screens + reports/dashboard.
   if (pathHasSegment(p, 'assets') && !pathHasSegment(p, 'asset-groups') && !pathHasSegment(p, 'asset-types')) {
-    add('assets:', 'asset-groups:', 'group-assets:');
+    add('assets:', 'asset-groups:', 'group-assets:', 'dashboard:', 'report:');
   }
 
   // Maintenance frequency / details mutations must refresh the config screen bundle.
@@ -121,6 +151,33 @@ function invalidationPrefixesForPath(path = '') {
     pathHasSegment(p, 'maint-types')
   ) {
     add('maintenance-config:', 'maintenance');
+  }
+
+  // Maintenance / approval / schedule mutations also drive Work Orders + dashboard.
+  if (
+    pathHasSegment(p, 'maintenance-schedules') ||
+    pathHasSegment(p, 'approval-detail') ||
+    pathHasSegment(p, 'maintenance-approvals') ||
+    pathHasSegment(p, 'work-orders') ||
+    pathHasSegment(p, 'workorders')
+  ) {
+    add(
+      'work-orders:',
+      'maintenance',
+      'maintenance-approval:',
+      'maintenance-supervisor:',
+      'dashboard:',
+      'report:',
+    );
+  }
+
+  // Scrap asset mutations change asset status and scrap hub summaries.
+  if (
+    pathHasSegment(p, 'scrap-assets') ||
+    pathHasSegment(p, 'asset-scrap') ||
+    pathHasSegment(p, 'scrap-maintenance')
+  ) {
+    add('scrap', 'assets:scrap:', 'assets:', 'dashboard:', 'work-orders:', 'report:');
   }
 
   const rules = [
@@ -141,6 +198,7 @@ function invalidationPrefixesForPath(path = '') {
     { segment: 'scrap', prefix: 'scrap' },
     { segment: 'maintenance', prefix: 'maintenance' },
     { segment: 'inspection', prefix: 'inspection' },
+    { segment: 'work-orders', prefix: 'work-orders:' },
   ];
 
   // Technician certificate upload/approval lists use dedicated store keys.
@@ -176,9 +234,15 @@ export function invalidateOnMutation({ method, url } = {}) {
   const path = normalizePath(url);
   if (path.includes('/auth/refresh')) return;
 
-  for (const prefix of invalidationPrefixesForPath(path)) {
-    invalidateCache(prefix);
+  const prefixes = invalidationPrefixesForPath(path);
+  // Delete keys once, then notify once with the full prefix set (avoid N listener storms).
+  for (const prefix of prefixes) {
+    for (const key of [...memoryCache.keys()]) {
+      if (key.startsWith(prefix)) memoryCache.delete(key);
+    }
+    bumpKeySerialByPrefix(prefix);
   }
+  if (prefixes.length) notifyInvalidation(prefixes);
 }
 
 export async function fetchWithCache(key, fetcher, { ttlMs = DEFAULT_TTL_MS, force = false } = {}) {

@@ -38,6 +38,9 @@ export default function QAAuditReport() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     loading,
     error,
   } = useReportState(selectedReportId, report);
@@ -1164,6 +1167,9 @@ export default function QAAuditReport() {
         hideAdvancedFilters={true}
         hideGenerateReport={true}
         onPreviewReport={handlePreviewReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
       />
 
       {/* Preview Modal */}

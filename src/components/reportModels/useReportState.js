@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { fakeRows, filterRows, REPORTS } from "./ReportConfig";
 import { assetRegisterService } from "../../services/assetRegisterService";
 import { assetLifecycleService } from "../../services/assetLifecycleService";
@@ -60,6 +60,9 @@ function getAdvancedFetchKey(advanced) {
 export function useReportState(reportId, report) {
   const [quick, setQuick] = useState({});
   const [advanced, setAdvanced] = useState([]);
+  /** Committed filters that drive API fetch + table rows (Apply commits draft → applied). */
+  const [appliedQuick, setAppliedQuick] = useState({});
+  const [appliedAdvanced, setAppliedAdvanced] = useState([]);
   const [columns, setColumns] = useState(null);
   const [views, setViews] = useState([]);
   const [allRows, setAllRows] = useState([]);
@@ -70,9 +73,35 @@ export function useReportState(reportId, report) {
   const [updatedReport, setUpdatedReport] = useState(null);
   const [forceUpdate, setForceUpdate] = useState(0);
 
-  const advancedFetchKey = useMemo(() => getAdvancedFetchKey(advanced), [advanced]);
+  const advancedFetchKey = useMemo(
+    () => getAdvancedFetchKey(appliedAdvanced),
+    [appliedAdvanced],
+  );
 
-  // Initialize quick filters with default values
+  const applyFilters = useCallback(() => {
+    setAppliedQuick({ ...quick });
+    setAppliedAdvanced(
+      Array.isArray(advanced) ? advanced.map((c) => ({ ...c })) : [],
+    );
+  }, [quick, advanced]);
+
+  const clearFilters = useCallback(() => {
+    setQuick({});
+    setAdvanced([]);
+    setAppliedQuick({});
+    setAppliedAdvanced([]);
+  }, []);
+
+  const loadAndApplyFilters = useCallback((nextQuick = {}, nextAdvanced = []) => {
+    const q = nextQuick && typeof nextQuick === 'object' ? { ...nextQuick } : {};
+    const a = Array.isArray(nextAdvanced) ? nextAdvanced.map((c) => ({ ...c })) : [];
+    setQuick(q);
+    setAdvanced(a);
+    setAppliedQuick(q);
+    setAppliedAdvanced(a);
+  }, []);
+
+  // Initialize quick filters with default values (also seed applied so first load runs)
   useEffect(() => {
     if (!report) return;
     
@@ -84,6 +113,9 @@ export function useReportState(reportId, report) {
     });
     
     setQuick(prev => ({ ...defaultQuick, ...prev }));
+    setAppliedQuick((prev) =>
+      Object.keys(prev || {}).length ? prev : { ...defaultQuick },
+    );
   }, [report]);
 
   // Fetch filter options from API for asset-register, asset-lifecycle, and maintenance-history reports
@@ -661,7 +693,10 @@ export function useReportState(reportId, report) {
   }, [reportId]);
 
   // Fetch filtered data from API (cached; also seeds dropdown options on base query)
+  // Uses applied* filters only — draft changes require Apply.
   useEffect(() => {
+    const quick = appliedQuick;
+    const advanced = appliedAdvanced;
     console.log('🔍 [useReportState] useEffect triggered for data fetching:', { reportId, quick, advanced });
     if (reportId === "asset-register") {
       const fetchAssetRegisterData = async () => {
@@ -1341,7 +1376,7 @@ export function useReportState(reportId, report) {
       console.log('🔄 [useReportState] Using fake data for report:', reportId);
       setAllRows(fakeRows(reportId, 12));
     }
-  }, [reportId, quick, advancedFetchKey]);
+  }, [reportId, appliedQuick, advancedFetchKey, appliedAdvanced]);
 
 
   // Update Asset ID and Work Order ID options dynamically
@@ -1836,12 +1871,12 @@ export function useReportState(reportId, report) {
 
   const filteredRows = useMemo(() => {
     // For asset-register, asset-lifecycle, maintenance-history, and breakdown-history, we're doing server-side filtering, so return allRows
-    // For other reports, use client-side filtering
+    // For other reports, use client-side filtering against applied filters
     if (reportId === "asset-register" || reportId === "asset-lifecycle" || reportId === "asset-valuation" || reportId === "maintenance-history" || reportId === "breakdown-history" || reportId === "asset-workflow-history" || reportId === "reopened-breakdowns" || reportId === "sla-report" || reportId === "spare-parts") {
       return allRows;
     }
-    return filterRows(allRows, reportId, quick, advanced);
-  }, [allRows, reportId, quick, advanced]);
+    return filterRows(allRows, reportId, appliedQuick, appliedAdvanced);
+  }, [allRows, reportId, appliedQuick, appliedAdvanced]);
 
   const cols = useMemo(() => {
     return columns || report?.defaultColumns || [];
@@ -1864,6 +1899,11 @@ export function useReportState(reportId, report) {
     setQuickField,
     advanced,
     setAdvanced,
+    appliedQuick,
+    appliedAdvanced,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     columns,
     setColumns,
     views,

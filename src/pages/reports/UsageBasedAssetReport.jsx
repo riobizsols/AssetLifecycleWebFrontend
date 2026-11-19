@@ -40,6 +40,9 @@ export default function UsageBasedAssetReport() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
   } = useReportState(selectedReportId, report);
 
   const [acmVersion, setAcmVersion] = useState(0);
@@ -408,6 +411,9 @@ export default function UsageBasedAssetReport() {
       exportService={usageBasedAssetReportService}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

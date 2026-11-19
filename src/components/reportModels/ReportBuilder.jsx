@@ -901,6 +901,9 @@ export default function ReportBuilder() {
               {/* Actions */}
               <div className="mt-4 flex items-center justify-end gap-2">
                 <button onClick={() => {}} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm">
+                  Apply
+                </button>
+                <button onClick={() => {}} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm">
                   Preview
                 </button>
                 <button onClick={() => {}} className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm">

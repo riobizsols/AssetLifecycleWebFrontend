@@ -40,7 +40,7 @@ export const useWorkOrderStore = create((set, get) => ({
   workOrders: cachedList || [],
   listLoading: !cachedList,
 
-  fetchWorkOrders: async ({ revalidate = false, onFresh } = {}) => {
+  fetchWorkOrders: async ({ revalidate = false, force = false, onFresh } = {}) => {
     const apply = (rows) => {
       set({ workOrders: rows, listLoading: false });
       onFresh?.(rows);
@@ -54,6 +54,18 @@ export const useWorkOrderStore = create((set, get) => ({
           ? res.data
           : [];
     };
+
+    if (force) {
+      // Silent: avoid re-entrancy via useCacheInvalidation subscribers.
+      invalidateCache('work-orders:', { silent: true });
+      set({ listLoading: true });
+      const { data } = await fetchWithCache(LIST_KEY, fetcher, {
+        ttlMs: WORK_ORDER_TTL_MS,
+        force: true,
+      });
+      apply(data);
+      return data;
+    }
 
     if (revalidate) {
       const cached = peekCache(LIST_KEY, WORK_ORDER_TTL_MS);
@@ -85,3 +97,4 @@ export const useWorkOrderStore = create((set, get) => ({
     set({ workOrders: [] });
   },
 }));
+

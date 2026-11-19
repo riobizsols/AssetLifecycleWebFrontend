@@ -29,6 +29,9 @@ export default function AssetLifecycleReport() {
     loading,
     error,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     filterOptions,
     report: updatedReport,
   } = useReportState(selectedReportId, report);
@@ -88,6 +91,9 @@ export default function AssetLifecycleReport() {
       apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

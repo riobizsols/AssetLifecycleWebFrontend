@@ -26,6 +26,9 @@ export default function UtilityConsumptionReport() {
     loading,
     error,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     filterOptions,
     report: updatedReport,
   } = useReportState(selectedReportId, report);
@@ -69,6 +72,9 @@ export default function UtilityConsumptionReport() {
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
       paginate
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

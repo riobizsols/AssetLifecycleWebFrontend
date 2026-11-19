@@ -18,6 +18,7 @@ import { useNavigation } from "../hooks/useNavigation";
 import useColumnAccess from "../hooks/useColumnAccess";
 import { useAssetsStore } from "../store/useAssetsStore";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useCacheInvalidation } from "../hooks/useCacheInvalidation";
 import { applyListFilterChange, hasActiveListFilters } from "../utils/listFilterState";
 import { buildAssetsListFilters } from "../utils/assetsListFilters";
 import { prefetchAddAssetFormData } from "../services/addAssetFormData";
@@ -210,7 +211,8 @@ const Assets = () => {
   }, []);
 
   const refreshAssets = useCallback(() => {
-    invalidateAssetsCache();
+    // Silent: avoid useCacheInvalidation re-entrancy when this refresh is the subscriber.
+    invalidateAssetsCache({ silent: true });
     return loadAssets(currentPage, loadAll, serverParams, { force: true });
   }, [currentPage, invalidateAssetsCache, loadAll, loadAssets, serverParams]);
 
@@ -237,6 +239,8 @@ const Assets = () => {
     loadAssets(currentPage, loadAll, serverParams, { revalidate: true });
     fetchAssetTypes({ revalidate: true, onFresh: setAssetTypes }).catch(() => {});
   });
+
+  useCacheInvalidation(['assets:', 'dashboard:'], () => refreshAssets());
 
   useEffect(() => {
     const editAssetId = searchParams.get("editAssetId");

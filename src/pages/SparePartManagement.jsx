@@ -1086,6 +1086,14 @@ export default function SparePartManagement() {
                 onClick={loadAll}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50 disabled:opacity-40"
               >
+                Apply
+              </button>
+              <button
+                type="button"
+                disabled={!canView || loading}
+                onClick={loadAll}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50 disabled:opacity-40"
+              >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
                 Preview
               </button>

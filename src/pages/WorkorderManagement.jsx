@@ -8,6 +8,7 @@ import { filterData } from "../utils/filterData";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useCacheInvalidation } from "../hooks/useCacheInvalidation";
 import { applyListFilterChange } from "../utils/listFilterState";
 import {
   formatWorkOrderRows,
@@ -58,6 +59,11 @@ const WorkorderManagement = () => {
   useRevalidateOnFocus(() => {
     fetchWorkOrders({ revalidate: true });
   });
+
+  // After maintenance/approval/scrap mutations, FE cache prefixes clear — force a fresh list.
+  useCacheInvalidation(['work-orders:', 'maintenance'], () =>
+    fetchWorkOrders({ force: true }),
+  );
 
   const handleSort = (column) => {
     setSortConfig((prevConfig) => {

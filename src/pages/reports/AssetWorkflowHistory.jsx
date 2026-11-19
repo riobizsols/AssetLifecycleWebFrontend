@@ -26,6 +26,9 @@ export default function AssetWorkflowHistory() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     report: updatedReport,
     filterOptions,
   } = useReportState(selectedReportId, report);
@@ -66,6 +69,9 @@ export default function AssetWorkflowHistory() {
       apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

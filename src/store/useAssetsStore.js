@@ -76,7 +76,7 @@ export const useAssetsStore = create((set, get) => ({
     filterValues: typeof updater === 'function' ? updater(state.filterValues) : updater,
   })),
 
-  invalidateAssetsCache: () => invalidateCache('assets:'),
+  invalidateAssetsCache: (opts = {}) => invalidateCache('assets:', opts),
 
   fetchAssetTypes: async ({ force = false, revalidate = false, onFresh } = {}) => {
     const key = assetTypesKey();

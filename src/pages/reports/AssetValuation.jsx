@@ -40,6 +40,9 @@ export default function AssetValuation() {
     views,
     setViews,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
   } = useReportState(selectedReportId, report);
 
   useEffect(() => {
@@ -191,6 +194,9 @@ export default function AssetValuation() {
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
       onRetry={handleRetry}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }

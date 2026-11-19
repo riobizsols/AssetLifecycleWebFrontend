@@ -61,6 +61,14 @@ export default function ConfigurePanel({
             type="button"
             disabled={!canView || loadingView}
             onClick={onView}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            disabled={!canView || loadingView}
+            onClick={onView}
             className="inline-flex items-center gap-1.5 rounded-lg bg-[#0E2F4B] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#143d65] disabled:opacity-50"
           >
             {loadingView ? (

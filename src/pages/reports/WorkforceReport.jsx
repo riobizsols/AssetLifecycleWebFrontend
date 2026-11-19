@@ -306,6 +306,15 @@ export default function WorkforceReport() {
             </div>
             <button
               type="button"
+              disabled={loading || (period === 'specific' && (!dateFrom || !dateTo))}
+              onClick={load}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Apply
+            </button>
+            <button
+              type="button"
               disabled={!report || downloading}
               onClick={handleDownload}
               className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-50"

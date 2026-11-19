@@ -26,6 +26,9 @@ export default function BreakdownHistory() {
     allRows,
     filteredRows,
     setQuickField,
+    applyFilters,
+    clearFilters,
+    loadAndApplyFilters,
     report: updatedReport,
     filterOptions,
   } = useReportState(selectedReportId, report);
@@ -66,6 +69,9 @@ export default function BreakdownHistory() {
       apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
+      onApplyFilters={applyFilters}
+      onClearFilters={clearFilters}
+      onLoadFilters={loadAndApplyFilters}
     />
   );
 }
